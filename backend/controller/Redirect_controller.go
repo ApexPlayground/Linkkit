@@ -1,8 +1,9 @@
 package controller
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
+
 	"net/http"
 	"time"
 
@@ -13,32 +14,44 @@ import (
 	"gorm.io/gorm"
 )
 
+type RedisLink struct {
+	ID      uint   `json:"id"`
+	LongURL string `json:"long_url"`
+}
+
 func Redirect(db *gorm.DB, clickSvc *service.ClickService, c *gin.Context) {
 	shortcode := c.Param("shortcode")
+	var link model.Link
 
-	// Check Redis first
-	longURL, err := config.RDB.Get(config.Ctx, shortcode).Result()
+	// Try Redis cache first
+	val, err := config.RDB.Get(config.Ctx, shortcode).Result()
 	if err == nil {
-		c.Redirect(http.StatusMovedPermanently, longURL)
-		return
+		var cached RedisLink
+		if err := json.Unmarshal([]byte(val), &cached); err == nil {
+			clickSvc.TrackClick(cached.ID, c.ClientIP(), c.Request.UserAgent(), c.Request.Referer())
+			c.Redirect(302, cached.LongURL)
+			return
+		}
 	}
 
-	var link model.Link
+	// Fetch from DB
 	if err := db.Where("short_code = ?", shortcode).First(&link).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Short URL not found"})
 			return
 		}
-		c.JSON(302, gin.H{"error": "Server error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Server error"})
 		return
 	}
 
-	if err := config.RDB.Set(config.Ctx, shortcode, link.LongUrl, 24*time.Hour).Err(); err != nil {
-		fmt.Println("Redis set error:", err)
+	// Save to Redis
+	cached := RedisLink{ID: link.ID, LongURL: link.LongUrl}
+	if data, err := json.Marshal(cached); err == nil {
+		config.RDB.Set(config.Ctx, shortcode, data, 24*time.Hour)
 	}
 
+	// Track click
 	clickSvc.TrackClick(link.ID, c.ClientIP(), c.Request.UserAgent(), c.Request.Referer())
 
 	c.Redirect(302, link.LongUrl)
-
 }

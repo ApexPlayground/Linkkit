@@ -26,7 +26,7 @@ func (s *ClickService) TrackClick(linkID uint, ip, userAgent, referrer string) {
 		}
 
 		if err := s.DB.Create(&click).Error; err != nil {
-			// Optional: log error for monitoring
+
 			// fmt.Println("Click tracking error:", err)
 		}
 
