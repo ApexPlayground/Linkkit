@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/ApexPlayground/Linkkit/config"
@@ -24,7 +25,22 @@ func CreateShortLink(longUrl string) (model.Link, error) {
 	const (
 		codeLength = 7
 		maxRetries = 5
+		maxURLLen  = 2048
 	)
+
+	longUrl = strings.TrimSpace(longUrl)
+	if len(longUrl) == 0 {
+		return model.Link{}, ServiceError{Status: 400, Message: "URL cannot be empty"}
+	}
+
+	if len(longUrl) > maxURLLen {
+		return model.Link{}, ServiceError{Status: 400, Message: "URL too long"}
+	}
+
+	parsed, err := url.ParseRequestURI(longUrl)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return model.Link{}, ServiceError{Status: 400, Message: "invalid URL"}
+	}
 
 	for range maxRetries {
 		code, err := GenerateShortCode(codeLength)
@@ -75,6 +91,7 @@ func GenerateShortCode(length int) (string, error) {
 		rand_num := binary.BigEndian.Uint64(b)
 		encoded := util.Base62Encode(int(rand_num))
 
+		// fix for annoying empty encoded value
 		if encoded == "" {
 			continue
 		}

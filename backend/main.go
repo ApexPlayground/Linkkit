@@ -17,11 +17,11 @@ func main() {
 
 	// Connect to DB
 	db := config.Connect()
-	sqlDB, err := db.DB()
+	myDB, err := db.DB()
 	if err != nil {
 		log.Fatal("Failed to get raw DB:", err)
 	}
-	defer sqlDB.Close()
+	defer myDB.Close()
 	fmt.Println("Database connected")
 
 	// Connect to Redis

@@ -8,11 +8,12 @@ import (
 
 	"github.com/ApexPlayground/Linkkit/config"
 	"github.com/ApexPlayground/Linkkit/model"
+	"github.com/ApexPlayground/Linkkit/service"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func Redirect(db *gorm.DB, c *gin.Context) {
+func Redirect(db *gorm.DB, clickSvc *service.ClickService, c *gin.Context) {
 	shortcode := c.Param("shortcode")
 
 	// Check Redis first
@@ -28,7 +29,7 @@ func Redirect(db *gorm.DB, c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Short URL not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Server error"})
+		c.JSON(302, gin.H{"error": "Server error"})
 		return
 	}
 
@@ -36,5 +37,8 @@ func Redirect(db *gorm.DB, c *gin.Context) {
 		fmt.Println("Redis set error:", err)
 	}
 
-	c.Redirect(http.StatusMovedPermanently, link.LongUrl)
+	clickSvc.TrackClick(link.ID, c.ClientIP(), c.Request.UserAgent(), c.Request.Referer())
+
+	c.Redirect(302, link.LongUrl)
+
 }
