@@ -22,9 +22,10 @@ func Connect() *gorm.DB {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	models := []interface{}{
+	models := []any{
 		&model.Link{},
 		&model.Click{},
+		&model.User{},
 	}
 
 	db.AutoMigrate(models...)

@@ -7,18 +7,15 @@ import (
 	"gorm.io/gorm"
 )
 
-func ShortnerSetupRouter(db *gorm.DB) *gin.Engine {
-	router := gin.Default()
+func ShortenerSetupRouter(router *gin.Engine, db *gorm.DB) {
 	apiIndex := "/api/v1"
 
-	//service
 	clickService := service.NewClickService(db)
 
 	router.POST(apiIndex+"/shorten", controller.ShortnerController)
 
+	// Redirect route
 	router.GET("/:shortcode", func(c *gin.Context) {
 		controller.Redirect(db, clickService, c)
 	})
-
-	return router
 }

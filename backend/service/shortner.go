@@ -12,15 +12,6 @@ import (
 	"github.com/ApexPlayground/Linkkit/util"
 )
 
-type ServiceError struct {
-	Status  int
-	Message string
-}
-
-func (e ServiceError) Error() string {
-	return e.Message
-}
-
 func CreateShortLink(longUrl string) (model.Link, error) {
 	const (
 		codeLength = 7
@@ -30,25 +21,22 @@ func CreateShortLink(longUrl string) (model.Link, error) {
 
 	longUrl = strings.TrimSpace(longUrl)
 	if len(longUrl) == 0 {
-		return model.Link{}, ServiceError{Status: 400, Message: "URL cannot be empty"}
+		return model.Link{}, fmt.Errorf("URL cannot be empty")
 	}
 
 	if len(longUrl) > maxURLLen {
-		return model.Link{}, ServiceError{Status: 400, Message: "URL too long"}
+		return model.Link{}, fmt.Errorf("URL too long")
 	}
 
 	parsed, err := url.ParseRequestURI(longUrl)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return model.Link{}, ServiceError{Status: 400, Message: "invalid URL"}
+		return model.Link{}, fmt.Errorf("invalid URL")
 	}
 
-	for range maxRetries {
+	for i := 0; i < maxRetries; i++ {
 		code, err := GenerateShortCode(codeLength)
 		if err != nil {
-			return model.Link{}, ServiceError{
-				Status:  500,
-				Message: "failed to generate shortcode",
-			}
+			return model.Link{}, fmt.Errorf("failed to generate shortcode")
 		}
 
 		link := model.Link{
@@ -66,15 +54,10 @@ func CreateShortLink(longUrl string) (model.Link, error) {
 			continue
 		}
 
-		return model.Link{}, ServiceError{
-			Status:  500,
-			Message: fmt.Sprintf("could not save link: %v", err),
-		}
+		return model.Link{}, fmt.Errorf("could not save link: %v", err)
 	}
-	return model.Link{}, ServiceError{
-		Status:  500,
-		Message: "could not generate unique shortcode after retries",
-	}
+
+	return model.Link{}, fmt.Errorf("could not generate unique shortcode after %d retries", maxRetries)
 }
 
 // GenerateShortCode generates a short code based on the long URL
@@ -88,8 +71,8 @@ func GenerateShortCode(length int) (string, error) {
 		}
 
 		// convert random bytes to numbers
-		rand_num := binary.BigEndian.Uint64(b)
-		encoded := util.Base62Encode(int(rand_num))
+		randNum := binary.BigEndian.Uint64(b)
+		encoded := util.Base62Encode(int(randNum))
 
 		// fix for annoying empty encoded value
 		if encoded == "" {
