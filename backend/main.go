@@ -5,7 +5,9 @@ import (
 	"log"
 
 	"github.com/ApexPlayground/Linkkit/config"
+	"github.com/ApexPlayground/Linkkit/controller"
 	"github.com/ApexPlayground/Linkkit/routes"
+	"github.com/ApexPlayground/Linkkit/service"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -29,11 +31,16 @@ func main() {
 	config.InitRedis()
 	fmt.Println("Redis connected")
 
+	clickSvc := service.NewClickService(db)
+	redirectSvc := service.NewRedirectService(db, clickSvc)
+
+	controller.InitRedirectController(redirectSvc)
+
 	router := gin.Default()
 
 	// Mount all route groups
 	routes.UserSetupRouter(router)
-	routes.ShortenerSetupRouter(router, db)
+	routes.ShortenerSetupRouter(router)
 	// routes.ClickSetupRouter(router)
 
 	fmt.Println("Starting server on :8080")

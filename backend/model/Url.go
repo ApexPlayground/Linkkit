@@ -17,9 +17,13 @@ type Link struct {
 
 type Click struct {
 	ID        uint      `gorm:"primaryKey"`
-	LinkID    uint      `gorm:"not null;index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	CreatedAt time.Time `gorm:"not null"`
-	IP        string    `gorm:"not null"`
-	UserAgent string    `gorm:"not null"`
+	LinkID    uint      `gorm:"not null;index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Link reference
+	CreatedAt time.Time `gorm:"not null"`                                                     // Timestamp of click
+	IP        string    `gorm:"not null"`                                                     // User IP
+	UserAgent string    `gorm:"not null"`                                                     // Browser/device info
 	Referrer  string
+	Country   string         `gorm:"default:null"`
+	Device    string         `gorm:"default:null"`
+	Browser   string         `gorm:"default:null"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }

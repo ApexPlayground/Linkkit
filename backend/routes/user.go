@@ -17,7 +17,7 @@ func UserSetupRouter(router *gin.Engine) {
 	protected := router.Group(apiIndex)
 	protected.Use(middleware.AuthMiddleware)
 
-	protected.GET("/:id", controller.GetUser)
+	protected.GET("/me", controller.GetUser)
 	protected.GET("/", controller.ListUsers)
 	protected.PUT("/", controller.UpdateUser)
 	protected.DELETE("/", controller.DeleteUser)
