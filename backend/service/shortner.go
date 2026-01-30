@@ -33,7 +33,7 @@ func CreateShortLink(longUrl string) (model.Link, error) {
 		return model.Link{}, fmt.Errorf("invalid URL")
 	}
 
-	for i := 0; i < maxRetries; i++ {
+	for range maxRetries {
 		code, err := GenerateShortCode(codeLength)
 		if err != nil {
 			return model.Link{}, fmt.Errorf("failed to generate shortcode")
@@ -62,17 +62,18 @@ func CreateShortLink(longUrl string) (model.Link, error) {
 
 // GenerateShortCode generates a short code based on the long URL
 func GenerateShortCode(length int) (string, error) {
-	for {
+	const maxAttempts = 10
+
+	for range maxAttempts {
 		b := make([]byte, 8)
 
 		_, err := rand.Read(b)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to generate random bytes: %v", err)
 		}
 
-		// convert random bytes to numbers
 		randNum := binary.BigEndian.Uint64(b)
-		encoded := util.Base62Encode(int(randNum))
+		encoded := util.Base62Encode(int(randNum % (1 << 62)))
 
 		// fix for annoying empty encoded value
 		if encoded == "" {
@@ -85,4 +86,5 @@ func GenerateShortCode(length int) (string, error) {
 
 		return encoded, nil
 	}
+	return "", fmt.Errorf("failed to generate shortcode after %d attempts", maxAttempts)
 }

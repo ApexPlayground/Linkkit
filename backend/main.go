@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/ApexPlayground/Linkkit/config"
 	"github.com/ApexPlayground/Linkkit/controller"
@@ -31,7 +32,8 @@ func main() {
 	config.InitRedis()
 	fmt.Println("Redis connected")
 
-	clickSvc := service.NewClickService(db)
+	geoipPath := os.Getenv("GEOIP_DB_PATH")
+	clickSvc := service.NewClickService(db, geoipPath)
 	redirectSvc := service.NewRedirectService(db, clickSvc)
 
 	controller.InitRedirectController(redirectSvc)

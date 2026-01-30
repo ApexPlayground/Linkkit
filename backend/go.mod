@@ -13,6 +13,9 @@ require (
 	github.com/jackc/pgx/v5 v5.6.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/mssola/useragent v1.0.0 // indirect
+	github.com/oschwald/geoip2-golang/v2 v2.1.0 // indirect
+	github.com/oschwald/maxminddb-golang/v2 v2.1.1 // indirect
 	github.com/redis/go-redis/v9 v9.17.2 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 )
