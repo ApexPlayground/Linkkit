@@ -24,7 +24,7 @@ func Connect() *gorm.DB {
 
 	models := []any{
 		&model.Link{},
-		&model.Click{},
+		&model.ClickStat{},
 		&model.User{},
 	}
 

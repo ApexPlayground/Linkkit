@@ -33,7 +33,7 @@ func main() {
 	fmt.Println("Redis connected")
 
 	geoipPath := os.Getenv("GEOIP_DB_PATH")
-	clickSvc := service.NewClickService(db, geoipPath)
+	clickSvc := service.NewClickService(db, geoipPath, 5)
 	redirectSvc := service.NewRedirectService(db, clickSvc)
 
 	controller.InitRedirectController(redirectSvc)
@@ -43,7 +43,6 @@ func main() {
 	// Mount all route groups
 	routes.UserSetupRouter(router)
 	routes.ShortenerSetupRouter(router)
-	// routes.ClickSetupRouter(router)
 
 	fmt.Println("Starting server on :8080")
 	if err := router.Run(":8080"); err != nil {

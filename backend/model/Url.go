@@ -15,15 +15,15 @@ type Link struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
-type Click struct {
+type ClickStat struct {
 	ID        uint      `gorm:"primaryKey"`
-	LinkID    uint      `gorm:"not null;index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Link reference
-	CreatedAt time.Time `gorm:"not null"`                                                     // Timestamp of click
-	IP        string    `gorm:"not null"`                                                     // User IP
-	UserAgent string    `gorm:"not null"`                                                     // Browser/device info
-	Referrer  string
-	Country   string         `gorm:"default:null"`
-	Device    string         `gorm:"default:null"`
-	Browser   string         `gorm:"default:null"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	LinkID    uint      `gorm:"not null;uniqueIndex:idx_clickstat_unique"`
+	Country   string    `gorm:"uniqueIndex:idx_clickstat_unique"`
+	Device    string    `gorm:"uniqueIndex:idx_clickstat_unique"`
+	Browser   string    `gorm:"uniqueIndex:idx_clickstat_unique"`
+	Referrer  string    `gorm:"uniqueIndex:idx_clickstat_unique"`
+	Day       time.Time `gorm:"not null;uniqueIndex:idx_clickstat_unique"`
+	Count     uint      `gorm:"not null;default:1"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

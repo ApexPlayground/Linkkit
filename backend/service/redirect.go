@@ -22,46 +22,52 @@ func NewRedirectService(db *gorm.DB, clickSvc *ClickService) *RedirectService {
 	}
 }
 
-type redisLink struct {
-	ID      uint   `json:"id"`
-	LongURL string `json:"long_url"`
-}
-
 func (s *RedirectService) Resolve(
 	shortcode string,
 	ip string,
-	ua string,
-	referer string,
+	userAgent string,
+	referrer string,
 ) (string, error) {
 
-	// 1. Try Redis cache
-	val, err := config.RDB.Get(config.Ctx, shortcode).Result()
-	if err == nil {
-		var cached redisLink
+	// Try Redis cache first
+	var linkID uint
+	var longURL string
+
+	if val, err := config.RDB.Get(config.Ctx, shortcode).Result(); err == nil {
+		var cached struct {
+			ID      uint   `json:"id"`
+			LongURL string `json:"long_url"`
+		}
 		if json.Unmarshal([]byte(val), &cached) == nil {
-			s.clickSvc.TrackClick(cached.ID, ip, ua, referer)
-			return cached.LongURL, nil
+			linkID = cached.ID
+			longURL = cached.LongURL
 		}
 	}
 
-	// 2. Fetch from DB
-	var link model.Link
-	if err := s.db.Where("short_code = ?", shortcode).First(&link).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", gorm.ErrRecordNotFound
+	// Cache miss → query DB
+	if linkID == 0 {
+		var link model.Link
+		if err := s.db.Where("short_code = ?", shortcode).First(&link).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", gorm.ErrRecordNotFound
+			}
+			return "", err
 		}
-		return "", err
+
+		linkID = link.ID
+		longURL = link.LongUrl
+
+		// Cache in Redis
+		payload, _ := json.Marshal(struct {
+			ID      uint   `json:"id"`
+			LongURL string `json:"long_url"`
+		}{linkID, longURL})
+
+		config.RDB.Set(config.Ctx, shortcode, payload, 24*time.Hour)
 	}
 
-	// 3. Cache in Redis
-	payload, _ := json.Marshal(redisLink{
-		ID:      link.ID,
-		LongURL: link.LongUrl,
-	})
-	config.RDB.Set(config.Ctx, shortcode, payload, 24*time.Hour)
+	// Track click asynchronously
+	s.clickSvc.TrackClick(linkID, ip, userAgent, referrer)
 
-	// 4. Track click
-	s.clickSvc.TrackClick(link.ID, ip, ua, referer)
-
-	return link.LongUrl, nil
+	return longURL, nil
 }
