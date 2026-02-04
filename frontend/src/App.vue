@@ -25,8 +25,10 @@ const toggleDarkMode = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white text-black transition-colors duration-300">
+  <div class="min-h-screen  bg-white text-black transition-colors duration-300">
     <Nav @toggle-dark-mode="toggleDarkMode" :is-dark="isDark"></Nav>
-    <RouterView />
+    <div class="mx-auto w-[90%] md:w-[70%] py-24">
+      <RouterView />
+    </div>
   </div>
 </template>

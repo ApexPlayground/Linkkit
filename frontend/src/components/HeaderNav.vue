@@ -3,9 +3,6 @@ import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import ToggleSwitch from 'primevue/toggleswitch'
 
-import Slider from 'primevue/slider';
-
-
 const props = defineProps({
   isDark: Boolean
 })
@@ -24,6 +21,7 @@ const emit = defineEmits(['toggleDarkMode'])
         LinkKit
       </RouterLink>
 
+      <!-- Desktop Navigation -->
       <div class="hidden md:flex text-xl space-x-2 font-medium">
         <RouterLink to="/about" class="hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-all duration-500">
           About
@@ -34,31 +32,33 @@ const emit = defineEmits(['toggleDarkMode'])
         <RouterLink to="/dashboard" class="hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-all duration-500">
           Dashboard
         </RouterLink>
-
-
-
-
-
-
       </div>
 
+      <!-- Desktop Actions -->
       <div class="hidden md:flex items-center space-x-4 text-xl font-medium">
         <ToggleSwitch v-model="props.isDark" @update:model-value="$emit('toggleDarkMode')" />
         <RouterLink to="/login" class="hover:bg-gray-100 rounded-lg px-3 py-1.5 transition-all duration-500">
           Login
         </RouterLink>
         <RouterLink to="/signup"
-          class="bg-black text-white hover:opacity-80 rounded-lg px-3 py-1.5 transition-all duration-500">
+          class="bg-green-400 text-white hover:opacity-80 rounded-lg px-3 py-1.5 transition-all duration-500">
           Sign up Free
         </RouterLink>
       </div>
 
-      <button class="md:hidden text-2xl" @click="isOpen = !isOpen">
-        <i v-if="!isOpen" class="pi pi-bars"></i>
-        <i v-else class="pi pi-times"></i>
-      </button>
+      <!-- Mobile: Dark Mode Toggle + Hamburger Menu -->
+      <div class="md:hidden flex items-center gap-3">
+        <div class="flex items-center">
+          <ToggleSwitch v-model="props.isDark" @update:model-value="$emit('toggleDarkMode')" class="scale-90" />
+        </div>
+        <button class="text-2xl flex items-center" @click="isOpen = !isOpen">
+          <i v-if="!isOpen" class="pi pi-bars"></i>
+          <i v-else class="pi pi-times"></i>
+        </button>
+      </div>
     </div>
 
+    <!-- Mobile Menu -->
     <transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-2"
       enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-150 ease-in"
       leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-2">
@@ -69,9 +69,8 @@ const emit = defineEmits(['toggleDarkMode'])
         <RouterLink @click="isOpen = false" to="/tools" class="py-2 transition-colors">Tools</RouterLink>
         <RouterLink @click="isOpen = false" to="/dashboard" class="py-2 transition-colors">Dashboard</RouterLink>
         <RouterLink @click="isOpen = false" to="/login" class="py-2 transition-colors">Login</RouterLink>
-        <ToggleSwitch v-model="props.isDark" @update:model-value="$emit('toggleDarkMode')" class="py-2" />
         <RouterLink @click="isOpen = false" to="/signup"
-          class="bg-orange-400 hover:bg-orange-500 rounded-lg px-6 py-3 text-center text-white transition-all duration-300">
+          class="bg-green-400 rounded-lg px-6 py-3 text-center text-white transition-all duration-300">
           Sign up Free
         </RouterLink>
       </div>
