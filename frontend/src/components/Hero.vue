@@ -17,20 +17,21 @@ const items = ref([
 const value = ref('')
 </script>
 <template>
-    <div class="mx-auto w-[95%] sm:w-[90%] md:w-[70%]  mt-16 sm:mt-24">
+    <div class="mx-auto w-[95%] sm:w-[90%] md:w-[50%] mt-16 sm:mt-24 ">
         <!-- Header -->
         <div class="text-center mb-12 md:mb-16">
             <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 md:mb-6">
                 URL Management Made Simple
             </h1>
-            <p class="text-base sm:text-lg md:text-xl max-w-2xl mx-auto">
+            <p class="text-base sm:text-lg md:text-xl  mx-auto">
                 Shorten, store, update, and track your links, generate QR codes, and manage everything from
-                one simple, powerful URL toolkit designed with you in mind.
+                one simple, powerful URL toolkit designed with you in mind .
             </p>
         </div>
 
         <!-- Tabs Card -->
-        <div class="card p-4 sm:p-6 md:p-8 border border-gray-200 rounded-2xl shadow-lg ">
+        <div class="card p-4 sm:p-6 md:p-8 border  bg-white/80 backdrop-blur-sm
+                 border-gray-200 rounded-2xl shadow-lg ">
             <Tabs value="link">
                 <!-- Tab Headers -->
                 <TabList class="flex flex-wrap justify-center gap-2 mb-4 sm:mb-6 px-2">
@@ -83,7 +84,7 @@ const value = ref('')
                 </TabPanels>
             </Tabs>
         </div>
-        <div class="text-center px-4 py-12">
+        <div class="text-center px-4 pt-12">
             <h2 class="text-3xl font-bold mb-3">
                 Sign up for free and simplify your analysis
             </h2>
