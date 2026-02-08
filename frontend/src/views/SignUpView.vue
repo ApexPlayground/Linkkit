@@ -1,8 +1,15 @@
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router'
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
+import Message from 'primevue/message';
+import InlineMessage from 'primevue/inlinemessage';
+
+import api from '@/services/api';
+
+const router = useRouter()
 
 const formData = ref({
     name: '',
@@ -10,9 +17,25 @@ const formData = ref({
     password: ''
 });
 
-const handleSubmit = () => {
-    console.log('Form submitted:', formData.value);
-};
+const loading = ref(false)
+const error = ref(null)
+
+const handleSubmit = async () => {
+    loading.value = true
+    error.value = null
+
+    try {
+        const { data } = await api.post('v1/users/signup', formData.value)
+
+        localStorage.setItem('token', data.token)
+        router.push('/dashboard')
+    } catch (err) {
+        error.value =
+            err.response?.data?.message || 'Something went wrong'
+    } finally {
+        loading.value = false
+    }
+}
 
 const handleGoogleSignup = () => {
     console.log('Google signup clicked');
@@ -23,13 +46,16 @@ const handleGoogleSignup = () => {
     <div class="flex items-center justify-center p-4 lg:p-8 mt-16 sm:mt-24">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden grid lg:grid-cols-2">
 
-
-
             <!-- Right Side - Form -->
             <div class="p-12 lg:p-16 flex flex-col justify-center">
                 <div class="max-w-md w-full mx-auto">
                     <h2 class="text-4xl lg:text-5xl font-bold mb-3">Create Account</h2>
                     <p class="mb-8 text-lg text-gray-500">Sign up to get started</p>
+
+                    <!-- Error Message -->
+                    <Message v-if="error" severity="error" :closable="true" @close="error = null" class="mb-6">
+                        {{ error }}
+                    </Message>
 
                     <form @submit.prevent="handleSubmit" class="space-y-6">
                         <!-- Name Input -->
@@ -38,11 +64,7 @@ const handleGoogleSignup = () => {
                                 <i class="pi pi-user mr-2"></i>Name
                             </label>
                             <InputText id="name" v-model="formData.name" placeholder="Enter your name"
-                                class="w-full text-lg" size="large">
-                                <template #prefix>
-                                    <i class="pi pi-user"></i>
-                                </template>
-                            </InputText>
+                                class="w-full text-lg" size="large" :disabled="loading" required />
                         </div>
 
                         <!-- Email Input -->
@@ -51,11 +73,7 @@ const handleGoogleSignup = () => {
                                 <i class="pi pi-envelope mr-2"></i>Email
                             </label>
                             <InputText id="email" v-model="formData.email" type="email" placeholder="Enter your email"
-                                class="w-full text-lg" size="large">
-                                <template #prefix>
-                                    <i class="pi pi-envelope"></i>
-                                </template>
-                            </InputText>
+                                class="w-full text-lg" size="large" :disabled="loading" required />
                         </div>
 
                         <!-- Password Input -->
@@ -64,7 +82,7 @@ const handleGoogleSignup = () => {
                                 <i class="pi pi-lock mr-2"></i>Password
                             </label>
                             <Password id="password" v-model="formData.password" placeholder="Enter your password"
-                                toggleMask fluid class="w-full" inputClass="text-lg">
+                                toggleMask fluid class="w-full" inputClass="text-lg" :disabled="loading" required>
                                 <template #header>
                                     <h6>Pick a password</h6>
                                 </template>
@@ -82,7 +100,7 @@ const handleGoogleSignup = () => {
 
                         <!-- Sign Up Button -->
                         <Button type="submit" label="Sign Up" class="w-full text-lg py-4 mt-2" severity="primary"
-                            size="large">
+                            size="large" :loading="loading" :disabled="loading">
                             <template #icon>
                                 <i class="pi pi-user-plus"></i>
                             </template>
@@ -100,7 +118,7 @@ const handleGoogleSignup = () => {
 
                         <!-- Google Sign Up Button -->
                         <Button type="button" @click="handleGoogleSignup" severity="secondary" outlined
-                            class="w-full text-lg py-4" size="large">
+                            class="w-full text-lg py-4" size="large" :disabled="loading">
                             <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24">
                                 <path fill="#4285F4"
                                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -122,11 +140,12 @@ const handleGoogleSignup = () => {
                     </p>
                 </div>
             </div>
+
             <!-- Left Side - Illustration -->
             <div
-                class="hidden lg:flex bg-linear-to-br from-green-400 to-emerald-600 p-12 flex-col justify-center items-center relative">
+                class="hidden lg:flex bg-gradient-to-br from-green-400 to-emerald-600 p-12 flex-col justify-center items-center relative">
                 <div class="text-white z-10 text-center">
-                    <h1 class="text-5xl font-bold mb-6">Welcome Back!</h1>
+                    <h1 class="text-5xl font-bold mb-6">Hey There!</h1>
                     <p class="text-xl text-white mb-8">Join our community and unlock amazing features</p>
                     <div class="w-full max-w-md">
                         <img src="/reg.svg" alt="Sign up illustration" class="w-full h-auto" />

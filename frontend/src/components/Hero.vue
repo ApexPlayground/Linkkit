@@ -30,7 +30,7 @@ const value = ref('')
         </div>
 
         <!-- Tabs Card -->
-        <div class="card p-4 sm:p-6 md:p-8 border  bg-white/80 backdrop-blur-sm
+        <div class="card p-4 sm:p-6 md:p-8 border  bg-white/80 backdrop-blur-md
                  border-gray-200 rounded-2xl shadow-lg ">
             <Tabs value="link">
                 <!-- Tab Headers -->
