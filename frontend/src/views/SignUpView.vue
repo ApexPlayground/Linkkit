@@ -1,15 +1,16 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router'
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
-import InlineMessage from 'primevue/inlinemessage';
+import { useAuthStore } from '@/stores/auth'
 
 import api from '@/services/api';
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const formData = ref({
     name: '',
@@ -19,19 +20,129 @@ const formData = ref({
 
 const loading = ref(false)
 const error = ref(null)
+const touched = ref({
+    name: false,
+    email: false,
+    password: false
+})
+
+// Validation rules
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+const validations = computed(() => ({
+    name: {
+        required: !formData.value.name.trim(),
+        minLength: formData.value.name.trim() && formData.value.name.trim().length < 2
+    },
+    email: {
+        required: !formData.value.email.trim(),
+        valid: formData.value.email.trim() && !emailRegex.test(formData.value.email)
+    },
+    password: {
+        required: !formData.value.password,
+        minLength: formData.value.password && formData.value.password.length < 8,
+        hasLowercase: formData.value.password && !/[a-z]/.test(formData.value.password),
+        hasUppercase: formData.value.password && !/[A-Z]/.test(formData.value.password),
+        hasNumber: formData.value.password && !/\d/.test(formData.value.password)
+    }
+}));
+
+const nameErrors = computed(() => {
+    if (!touched.value.name) return [];
+    const errors = [];
+    if (validations.value.name.required) {
+        errors.push('Name is required');
+    } else if (validations.value.name.minLength) {
+        errors.push('Name must be at least 2 characters');
+    }
+    return errors;
+});
+
+const emailErrors = computed(() => {
+    if (!touched.value.email) return [];
+    const errors = [];
+    if (validations.value.email.required) {
+        errors.push('Email is required');
+    } else if (validations.value.email.valid) {
+        errors.push('Please enter a valid email address');
+    }
+    return errors;
+});
+
+const passwordErrors = computed(() => {
+    if (!touched.value.password) return [];
+    const errors = [];
+    if (validations.value.password.required) {
+        errors.push('Password is required');
+    } else {
+        if (validations.value.password.minLength) {
+            errors.push('Password must be at least 8 characters');
+        }
+        if (validations.value.password.hasLowercase) {
+            errors.push('Password must contain at least one lowercase letter');
+        }
+        if (validations.value.password.hasUppercase) {
+            errors.push('Password must contain at least one uppercase letter');
+        }
+        if (validations.value.password.hasNumber) {
+            errors.push('Password must contain at least one number');
+        }
+    }
+    return errors;
+});
+
+const isFormValid = computed(() => {
+    return formData.value.name.trim() &&
+        formData.value.name.trim().length >= 2 &&
+        formData.value.email.trim() &&
+        emailRegex.test(formData.value.email) &&
+        formData.value.password &&
+        passwordRegex.test(formData.value.password);
+});
+
+const handleBlur = (field) => {
+    touched.value[field] = true;
+};
 
 const handleSubmit = async () => {
+    // Mark all fields as touched
+    touched.value.name = true;
+    touched.value.email = true;
+    touched.value.password = true;
+
+    // Validate before submitting
+    if (!isFormValid.value) {
+        error.value = 'Please fix the errors before submitting';
+        return;
+    }
+
     loading.value = true
     error.value = null
 
     try {
-        const { data } = await api.post('v1/users/signup', formData.value)
+        const { data } = await api.post('v1/users/signup', {
+            name: formData.value.name.trim(),
+            email: formData.value.email.trim(),
+            password: formData.value.password
+        })
 
-        localStorage.setItem('token', data.token)
+        // Update Pinia store with token and user info
+        authStore.login(
+            data.token,
+            {
+                id: data.id,
+                name: data.name,
+                email: data.email,
+                isAdmin: data.is_admin,
+                createdAt: data.createdAt
+            }
+        )
+
+        // Redirect to dashboard
         router.push('/dashboard')
     } catch (err) {
-        error.value =
-            err.response?.data?.message || 'Something went wrong'
+        error.value = err.response?.data?.message || 'Something went wrong. Please try again.'
     } finally {
         loading.value = false
     }
@@ -64,7 +175,11 @@ const handleGoogleSignup = () => {
                                 <i class="pi pi-user mr-2"></i>Name
                             </label>
                             <InputText id="name" v-model="formData.name" placeholder="Enter your name"
-                                class="w-full text-lg" size="large" :disabled="loading" required />
+                                class="w-full text-lg" size="large" :class="{ 'p-invalid': nameErrors.length > 0 }"
+                                @blur="handleBlur('name')" :disabled="loading" />
+                            <small v-for="error in nameErrors" :key="error" class="text-red-500 block mt-1">
+                                {{ error }}
+                            </small>
                         </div>
 
                         <!-- Email Input -->
@@ -73,7 +188,11 @@ const handleGoogleSignup = () => {
                                 <i class="pi pi-envelope mr-2"></i>Email
                             </label>
                             <InputText id="email" v-model="formData.email" type="email" placeholder="Enter your email"
-                                class="w-full text-lg" size="large" :disabled="loading" required />
+                                class="w-full text-lg" size="large" :class="{ 'p-invalid': emailErrors.length > 0 }"
+                                @blur="handleBlur('email')" :disabled="loading" />
+                            <small v-for="error in emailErrors" :key="error" class="text-red-500 block mt-1">
+                                {{ error }}
+                            </small>
                         </div>
 
                         <!-- Password Input -->
@@ -82,20 +201,37 @@ const handleGoogleSignup = () => {
                                 <i class="pi pi-lock mr-2"></i>Password
                             </label>
                             <Password id="password" v-model="formData.password" placeholder="Enter your password"
-                                toggleMask fluid class="w-full" inputClass="text-lg" :disabled="loading" required>
+                                toggleMask fluid class="w-full" inputClass="text-lg"
+                                :class="{ 'p-invalid': passwordErrors.length > 0 }" @blur="handleBlur('password')"
+                                :disabled="loading">
                                 <template #header>
                                     <h6>Pick a password</h6>
                                 </template>
                                 <template #footer>
-                                    <p class="mt-2">Suggestions:</p>
+                                    <p class="mt-2">Requirements:</p>
                                     <ul class="pl-2 ml-2 mt-0" style="line-height: 1.5">
-                                        <li>At least one lowercase</li>
-                                        <li>At least one uppercase</li>
-                                        <li>At least one numeric</li>
-                                        <li>Minimum 8 characters</li>
+                                        <li
+                                            :class="formData.password && /[a-z]/.test(formData.password) ? 'text-green-600' : ''">
+                                            At least one lowercase letter
+                                        </li>
+                                        <li
+                                            :class="formData.password && /[A-Z]/.test(formData.password) ? 'text-green-600' : ''">
+                                            At least one uppercase letter
+                                        </li>
+                                        <li
+                                            :class="formData.password && /\d/.test(formData.password) ? 'text-green-600' : ''">
+                                            At least one number
+                                        </li>
+                                        <li
+                                            :class="formData.password && formData.password.length >= 8 ? 'text-green-600' : ''">
+                                            Minimum 8 characters
+                                        </li>
                                     </ul>
                                 </template>
                             </Password>
+                            <small v-for="error in passwordErrors" :key="error" class="text-red-500 block mt-1">
+                                {{ error }}
+                            </small>
                         </div>
 
                         <!-- Sign Up Button -->
@@ -135,7 +271,8 @@ const handleGoogleSignup = () => {
 
                     <p class="text-center text-base mt-8">
                         Already have an account?
-                        <RouterLink to="/login" class="text-green-400 hover:text-green-400/90 font-medium ml-1">Sign in
+                        <RouterLink to="/login" class="text-green-400 hover:text-green-400/90 font-medium ml-1">
+                            Sign in
                         </RouterLink>
                     </p>
                 </div>
@@ -143,7 +280,7 @@ const handleGoogleSignup = () => {
 
             <!-- Left Side - Illustration -->
             <div
-                class="hidden lg:flex bg-gradient-to-br from-green-400 to-emerald-600 p-12 flex-col justify-center items-center relative">
+                class="hidden lg:flex bg-linear-to-br from-green-400 to-emerald-600 p-12 flex-col justify-center items-center relative">
                 <div class="text-white z-10 text-center">
                     <h1 class="text-5xl font-bold mb-6">Hey There!</h1>
                     <p class="text-xl text-white mb-8">Join our community and unlock amazing features</p>

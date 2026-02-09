@@ -1,9 +1,17 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router'
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
+import Message from 'primevue/message';
+
+import api from '@/services/api';
+import { useAuthStore } from '@/stores/auth';
+
+const router = useRouter();
+const authStore = useAuthStore();
 
 const formData = ref({
     email: '',
@@ -11,8 +19,103 @@ const formData = ref({
     rememberMe: false
 });
 
-const handleSubmit = () => {
-    console.log('Form submitted:', formData.value);
+const loading = ref(false);
+const error = ref(null);
+const touched = ref({
+    email: false,
+    password: false
+});
+
+// Validation rules
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const validations = computed(() => ({
+    email: {
+        required: !formData.value.email.trim(),
+        valid: formData.value.email.trim() && !emailRegex.test(formData.value.email)
+    },
+    password: {
+        required: !formData.value.password,
+        minLength: formData.value.password && formData.value.password.length < 8
+    }
+}));
+
+const emailErrors = computed(() => {
+    if (!touched.value.email) return [];
+    const errors = [];
+    if (validations.value.email.required) {
+        errors.push('Email is required');
+    } else if (validations.value.email.valid) {
+        errors.push('Please enter a valid email address');
+    }
+    return errors;
+});
+
+const passwordErrors = computed(() => {
+    if (!touched.value.password) return [];
+    const errors = [];
+    if (validations.value.password.required) {
+        errors.push('Password is required');
+    } else if (validations.value.password.minLength) {
+        errors.push('Password must be at least 8 characters');
+    }
+    return errors;
+});
+
+const isFormValid = computed(() => {
+    return formData.value.email.trim() &&
+        emailRegex.test(formData.value.email) &&
+        formData.value.password &&
+        formData.value.password.length >= 8;
+});
+
+const handleBlur = (field) => {
+    touched.value[field] = true;
+};
+
+const handleSubmit = async () => {
+    // Mark all fields as touched
+    touched.value.email = true;
+    touched.value.password = true;
+
+    // Validate before submitting
+    if (!isFormValid.value) {
+        error.value = 'Please fix the errors before submitting';
+        return;
+    }
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+        const { data } = await api.post('v1/users/login', {
+            email: formData.value.email.trim(),
+            password: formData.value.password
+        });
+
+        // Update Pinia store with token and user info
+        authStore.login(
+            data.token,
+            {
+                id: data.id,
+                name: data.name,
+                email: data.email,
+                isAdmin: data.is_admin,
+                createdAt: data.createdAt
+            }
+        );
+
+        // Redirect to dashboard
+        router.push('/dashboard');
+    } catch (err) {
+        if (err.response && err.response.data) {
+            error.value = err.response.data.message || err.response.data.error || 'Invalid email or password';
+        } else {
+            error.value = err.message || 'Something went wrong. Please try again.';
+        }
+    } finally {
+        loading.value = false;
+    }
 };
 
 const handleGoogleLogin = () => {
@@ -33,9 +136,7 @@ const handleGoogleLogin = () => {
 
                     <!-- Illustration Image -->
                     <div class="w-full max-w-md">
-                        <div class="w-full max-w-md">
-                            <img src="/login.svg" alt="Login illustration" class="w-full h-auto" />
-                        </div>
+                        <img src="/login.svg" alt="Login illustration" class="w-full h-auto" />
                     </div>
                 </div>
 
@@ -50,6 +151,11 @@ const handleGoogleLogin = () => {
                     <h2 class="text-4xl lg:text-5xl font-bold mb-3">Welcome Back</h2>
                     <p class="mb-8 text-lg text-gray-600">Sign in to your account</p>
 
+                    <!-- General Error Message -->
+                    <Message v-if="error" severity="error" :closable="false" class="mb-4">
+                        {{ error }}
+                    </Message>
+
                     <form @submit.prevent="handleSubmit" class="space-y-6">
                         <!-- Email Input -->
                         <div>
@@ -57,11 +163,11 @@ const handleGoogleLogin = () => {
                                 <i class="pi pi-envelope mr-2"></i>Email
                             </label>
                             <InputText id="email" v-model="formData.email" type="email" placeholder="Enter your email"
-                                class="w-full text-lg" size="large">
-                                <template #prefix>
-                                    <i class="pi pi-envelope"></i>
-                                </template>
-                            </InputText>
+                                class="w-full text-lg" size="large" :class="{ 'p-invalid': emailErrors.length > 0 }"
+                                @blur="handleBlur('email')" :disabled="loading" />
+                            <small v-for="error in emailErrors" :key="error" class="text-red-500 block mt-1">
+                                {{ error }}
+                            </small>
                         </div>
 
                         <!-- Password Input -->
@@ -70,13 +176,19 @@ const handleGoogleLogin = () => {
                                 <i class="pi pi-lock mr-2"></i>Password
                             </label>
                             <Password id="password" v-model="formData.password" placeholder="Enter your password"
-                                toggleMask :feedback="false" fluid class="w-full" inputClass="text-lg" />
+                                toggleMask :feedback="false" fluid class="w-full" inputClass="text-lg"
+                                :class="{ 'p-invalid': passwordErrors.length > 0 }" @blur="handleBlur('password')"
+                                :disabled="loading" />
+                            <small v-for="error in passwordErrors" :key="error" class="text-red-500 block mt-1">
+                                {{ error }}
+                            </small>
                         </div>
 
                         <!-- Remember Me & Forgot Password -->
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
-                                <Checkbox v-model="formData.rememberMe" inputId="rememberMe" :binary="true" />
+                                <Checkbox v-model="formData.rememberMe" inputId="rememberMe" :binary="true"
+                                    :disabled="loading" />
                                 <label for="rememberMe" class="ml-2 text-base cursor-pointer">Remember me</label>
                             </div>
                             <a href="#" class="text-base text-green-400 hover:text-green-400/80 font-medium">
@@ -86,7 +198,7 @@ const handleGoogleLogin = () => {
 
                         <!-- Sign In Button -->
                         <Button type="submit" label="Sign In" class="w-full text-lg py-4 mt-2" severity="primary"
-                            size="large">
+                            size="large" :loading="loading" :disabled="loading">
                             <template #icon>
                                 <i class="pi pi-sign-in"></i>
                             </template>
@@ -104,7 +216,7 @@ const handleGoogleLogin = () => {
 
                         <!-- Google Sign In Button -->
                         <Button type="button" @click="handleGoogleLogin" severity="secondary" outlined
-                            class="w-full text-lg py-4" size="large">
+                            class="w-full text-lg py-4" size="large" :disabled="loading">
                             <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24">
                                 <path fill="#4285F4"
                                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -121,7 +233,8 @@ const handleGoogleLogin = () => {
 
                     <p class="text-center text-base mt-8">
                         Don't have an account?
-                        <RouterLink to="/signup" class="text-green-400 hover:text-green-400/80 font-medium ml-1">Sign up
+                        <RouterLink to="/signup" class="text-green-400 hover:text-green-400/80 font-medium ml-1">
+                            Sign up
                         </RouterLink>
                     </p>
                 </div>

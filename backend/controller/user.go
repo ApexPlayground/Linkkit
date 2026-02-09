@@ -15,15 +15,22 @@ func CreateUser(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&body); err != nil {
 		log.Println("Failed to parse user body:", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid request body"})
 		return
 	}
 
-	//call service
+	// call service
 	user, err := service.SignUp(body)
 	if err != nil {
 		log.Println("Failed to create user:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	token, err := util.GenerateJWT(user)
+	if err != nil {
+		log.Println("Failed to generate token:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to generate token"})
 		return
 	}
 
@@ -32,9 +39,9 @@ func CreateUser(c *gin.Context) {
 		"name":      user.Name,
 		"email":     user.Email,
 		"is_admin":  user.IsAdmin,
+		"token":     token,
 		"createdAt": user.CreatedAt,
 	})
-
 }
 
 func Login(c *gin.Context) {

@@ -24,7 +24,7 @@ func SignUp(user model.User) (model.User, error) {
 
 	if err := config.DB.Create(&user).Error; err != nil {
 		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
-			return model.User{}, fmt.Errorf("email already exists")
+			return model.User{}, fmt.Errorf("user already exists")
 		}
 		return model.User{}, fmt.Errorf("failed to create user")
 	}
