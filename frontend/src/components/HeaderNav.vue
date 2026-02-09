@@ -2,17 +2,14 @@
 import { ref, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import ToggleSwitch from 'primevue/toggleswitch'
-
-const props = defineProps({
-  isDark: Boolean
-})
 
 const isOpen = ref(false)
 const showProfileMenu = ref(false)
-const emit = defineEmits(['toggleDarkMode'])
 
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 const router = useRouter()
 
 // Get user initials from name
@@ -21,10 +18,8 @@ const userInitials = computed(() => {
 
   const names = authStore.user.name.trim().split(' ')
   if (names.length === 1) {
-
     return names[0].substring(0, 2).toUpperCase()
   }
-  // Multiple names like "first last" = "FL"
   return (names[0][0] + names[names.length - 1][0]).toUpperCase()
 })
 
@@ -63,7 +58,8 @@ const handleLogout = () => {
 
       <!-- Desktop Actions -->
       <div class="hidden md:flex items-center space-x-4 text-xl font-medium">
-        <ToggleSwitch v-model="props.isDark" @update:model-value="$emit('toggleDarkMode')" />
+        <!-- REMOVED @update:model-value -->
+        <ToggleSwitch v-model="themeStore.isDark" />
 
         <!-- Show login/signup if not authenticated -->
         <template v-if="!authStore.isAuthenticated">
@@ -97,9 +93,9 @@ const handleLogout = () => {
                 class="block px-4 py-2 text-sm hover:bg-gray-100 transition-colors">
                 Dashboard
               </RouterLink>
-              <RouterLink @click="showProfileMenu = false" to="/profile"
+              <RouterLink @click="showProfileMenu = false" to="/dashboard/settings"
                 class="block px-4 py-2 text-sm hover:bg-gray-100 transition-colors">
-                Profile Settings
+                Settings
               </RouterLink>
               <button @click="handleLogout"
                 class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors">
@@ -113,7 +109,8 @@ const handleLogout = () => {
       <!-- Mobile: Dark Mode Toggle + Hamburger Menu -->
       <div class="md:hidden flex items-center gap-3">
         <div class="flex items-center">
-          <ToggleSwitch v-model="props.isDark" @update:model-value="$emit('toggleDarkMode')" class="scale-90" />
+          <!-- REMOVED @update:model-value -->
+          <ToggleSwitch v-model="themeStore.isDark" class="scale-90" />
         </div>
 
         <!-- Profile circle for mobile if authenticated -->
@@ -140,7 +137,8 @@ const handleLogout = () => {
 
         <template v-if="authStore.isAuthenticated">
           <RouterLink @click="isOpen = false" to="/dashboard" class="py-2 transition-colors">Dashboard</RouterLink>
-          <RouterLink @click="isOpen = false" to="/profile" class="py-2 transition-colors">Profile Settings</RouterLink>
+          <RouterLink @click="isOpen = false" to="/dashboard/settings" class="py-2 transition-colors">Settings
+          </RouterLink>
           <button @click="handleLogout" class="py-2 text-left text-red-600 transition-colors">
             Logout
           </button>

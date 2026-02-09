@@ -37,6 +37,15 @@ const router = createRouter({
         auth.isAuthenticated ? next('/dashboard') : next()
       },
     },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('../views/DashboardView.vue'),
+      beforeEnter: (to, from, next) => {
+        const auth = useAuthStore()
+        auth.isAuthenticated ? next() : next('/login')
+      },
+    },
   ],
 })
 
