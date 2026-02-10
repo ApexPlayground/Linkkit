@@ -44,7 +44,7 @@ func (s *RedirectService) Resolve(
 		}
 	}
 
-	// Cache miss → query DB
+	// Cache miss, query DB
 	if linkID == 0 {
 		var link model.Link
 		if err := s.db.Where("short_code = ?", shortcode).First(&link).Error; err != nil {
