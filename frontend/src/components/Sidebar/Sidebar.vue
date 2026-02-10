@@ -28,20 +28,20 @@ const menuItems = [
         label: 'Links',
         icon: 'pi pi-link',
         route: '/dashboard/links',
-        description: 'Manage your links'
+        description: 'Shorten and manage your links'
     },
     {
         label: 'QR Codes',
         icon: 'pi pi-qrcode',
         route: '/dashboard/qr-codes',
-        description: 'Generate QR codes'
+        description: 'Generate and manage QR codes'
     },
-    {
-        label: 'Analytics',
-        icon: 'pi pi-chart-line',
-        route: '/dashboard/analytics',
-        description: 'View statistics'
-    },
+    // {
+    //     label: 'Analytics',
+    //     icon: 'pi pi-chart-line',
+    //     route: '/dashboard/analytics',
+    //     description: 'View statistics'
+    // },
 
 ]
 
@@ -52,7 +52,7 @@ const navigateTo = (route) => {
 
 const handleLogout = async () => {
     sidebarVisible.value = false
-    await authStore.logout()
+    authStore.logout()
     router.replace('/login')
 }
 

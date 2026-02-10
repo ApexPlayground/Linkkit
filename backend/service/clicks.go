@@ -41,7 +41,7 @@ func NewClickService(db *gorm.DB, geoipPath string, numWorkers int) *ClickServic
 	}
 
 	// Start worker pool
-	for i := 0; i < numWorkers; i++ {
+	for i := range numWorkers {
 		go s.worker(i)
 	}
 

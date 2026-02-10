@@ -13,8 +13,12 @@ const emit = defineEmits(['navigate'])
 const route = useRoute()
 
 const isActive = (itemRoute) => {
-    return route.path === itemRoute || route.path.startsWith(itemRoute + '/')
+    if (itemRoute === '/dashboard') {
+        return route.path === '/dashboard'
+    }
+    return route.path === itemRoute
 }
+
 
 const handleClick = (itemRoute) => {
     emit('navigate', itemRoute)
@@ -23,7 +27,7 @@ const handleClick = (itemRoute) => {
 
 <template>
     <nav class="flex-1 overflow-y-auto p-4">
-        <div class="space-y-1">
+        <div class="space-y-5">
             <SidebarNavItem v-for="item in items" :key="item.route" :label="item.label" :icon="item.icon"
                 :description="item.description" :is-active="isActive(item.route)" @click="handleClick(item.route)" />
         </div>

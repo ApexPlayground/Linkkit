@@ -89,7 +89,7 @@ const value = ref('')
                 Sign up for free and simplify your analysis
             </h2>
 
-            <div class="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 mb-8">
+            <div class="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 ">
                 <span class="flex items-center justify-center sm:justify-start gap-2">
                     <i class="pi pi-check text-green-500"></i>
                     <span class="text-sm sm:text-base">Free URL Shortening</span>

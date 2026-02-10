@@ -127,25 +127,25 @@ const handleGoogleLogin = () => {
     <div class="flex items-center justify-center p-4 lg:p-8 mt-16 sm:mt-24">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden grid lg:grid-cols-2">
 
-            <!-- Left Side - Illustration -->
+            <!-- Left Side  -->
             <div
                 class="hidden lg:flex bg-linear-to-br from-green-400 to-emerald-600 p-12 flex-col justify-center items-center relative">
                 <div class="text-white z-10 text-center">
                     <h1 class="text-5xl font-bold mb-6">Hello Again!</h1>
                     <p class="text-xl text-white mb-8">Welcome back, we've missed you!</p>
 
-                    <!-- Illustration Image -->
+
                     <div class="w-full max-w-md">
                         <img src="/login.svg" alt="Login illustration" class="w-full h-auto" />
                     </div>
                 </div>
 
-                <!-- Decorative elements -->
+
                 <div class="absolute top-10 left-10 w-20 h-20 border-4 border-white/30 rounded-full"></div>
                 <div class="absolute bottom-10 right-10 w-32 h-32 border-4 border-white/30 rounded-full"></div>
             </div>
 
-            <!-- Right Side - Form -->
+            <!-- Right Side  -->
             <div class="p-12 lg:p-16 flex flex-col justify-center">
                 <div class="max-w-md w-full mx-auto">
                     <h2 class="text-4xl lg:text-5xl font-bold mb-3">Welcome Back</h2>

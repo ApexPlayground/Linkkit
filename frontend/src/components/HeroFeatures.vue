@@ -5,7 +5,7 @@
 <template>
     <!-- Features Grid Hero -->
     <div class="">
-        <div class="mx-auto w-[95%] sm:w-[90%] md:w-[70%] py-16 sm:py-24">
+        <div class="mx-auto w-[95%] sm:w-[90%] md:w-[70%] pt-16 sm:pt-24">
             <!-- Header with animation -->
             <div v-animateonscroll="{ enterClass: 'animate-enter fade-in-10 slide-in-from-b-20 animate-duration-1000' }"
                 class="text-center mb-12 animation-duration-1000">
@@ -18,9 +18,9 @@
             </div>
 
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
+                <!-- Card 1 -->
                 <div v-animateonscroll="{ enterClass: 'animate-enter fade-in-10 slide-in-from-t-20 animate-duration-1000' }"
-                    class="p-6 rounded-xl bg-white/80  backdrop-blur-md  border-2 border-gray-200 shadow-lg animation-duration-1000">
+                    class="group relative p-6 rounded-xl bg-white shadow-lg animation-duration-1000 animation-ease-in-out overflow-hidden">
                     <div
                         class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
                         <i class="pi pi-bolt text-2xl text-green-400"></i>
@@ -31,9 +31,9 @@
                     </p>
                 </div>
 
-
+                <!-- Card 2 -->
                 <div v-animateonscroll="{ enterClass: 'animate-enter fade-in-10 slide-in-from-b-20 animate-duration-1000' }"
-                    class="p-6 rounded-xl bg-white/80  backdrop-blur-md border-2 border-gray-200 shadow-lg animation-duration-1000 animation-ease-in-out">
+                    class="group relative p-6 rounded-xl bg-white shadow-lg animation-duration-1000 animation-ease-in-out overflow-hidden">
                     <div
                         class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
                         <i class="pi pi-pencil text-2xl text-green-400"></i>
@@ -44,9 +44,9 @@
                     </p>
                 </div>
 
-                <!-- Feature Card 3 - Fade in right -->
+                <!-- Card 3 -->
                 <div v-animateonscroll="{ enterClass: 'animate-enter fade-in-10 slide-in-from-t-20 animate-duration-1000' }"
-                    class="p-6 rounded-xl bg-white/80  backdrop-blur-md  border-2 border-gray-200 shadow-lg animation-duration-1000 animation-ease-in-out">
+                    class="group relative p-6 rounded-xl bg-white shadow-lg animation-duration-1000 animation-ease-in-out overflow-hidden">
                     <div
                         class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
                         <i class="pi pi-qrcode text-2xl text-green-400"></i>
@@ -57,9 +57,9 @@
                     </p>
                 </div>
 
-                <!-- Feature Card 4 - Zoom in -->
+                <!-- Card 4 -->
                 <div v-animateonscroll="{ enterClass: 'animate-enter fade-in-10 zoom-in-50 animate-duration-1000' }"
-                    class="p-6 rounded-xl bg-white/80  backdrop-blur-md  border-2 border-gray-200 shadow-lg animation-duration-1000">
+                    class="group relative p-6 rounded-xl bg-white shadow-lg animation-duration-1000 animation-ease-in-out overflow-hidden">
                     <div
                         class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
                         <i class="pi pi-shield text-2xl text-green-400"></i>
@@ -70,9 +70,9 @@
                     </p>
                 </div>
 
-                <!-- Feature Card 5 - Flip left -->
+                <!-- Card 5 -->
                 <div v-animateonscroll="{ enterClass: 'animate-enter fade-in-10 zoom-in-75 animate-duration-1000' }"
-                    class="p-6 rounded-xl bg-white/80  backdrop-blur-md  border-2 border-gray-200 shadow-lg animation-duration-1000 animation-ease-in-out">
+                    class="group relative p-6 rounded-xl bg-white shadow-lg animation-duration-1000 animation-ease-in-out overflow-hidden">
                     <div
                         class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
                         <i class="pi pi-sync text-2xl text-green-400"></i>
@@ -83,9 +83,9 @@
                     </p>
                 </div>
 
-                <!-- Feature Card 6 - Scale in -->
+                <!-- Card 6 -->
                 <div v-animateonscroll="{ enterClass: 'animate-enter fade-in-10 zoom-in-50 animate-duration-1000' }"
-                    class="p-6 rounded-xl bg-white/80  backdrop-blur-md  border-2 border-gray-200 shadow-lg animation-duration-1000 animation-ease-in-out">
+                    class="group relative p-6 rounded-xl bg-white shadow-lg animation-duration-1000 animation-ease-in-out overflow-hidden">
                     <div
                         class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mb-4">
                         <i class="pi pi-chart-line text-2xl text-green-400"></i>

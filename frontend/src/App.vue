@@ -3,6 +3,7 @@ import { onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useThemeStore } from '@/stores/theme'
 import Nav from './components/HeaderNav.vue'
+import FooterView from './views/FooterView.vue'
 import { RouterView } from 'vue-router'
 
 const route = useRoute()
@@ -40,6 +41,7 @@ onMounted(() => {
       <div :class="isDashboardRoute ? '' : 'mx-auto py-24'">
         <RouterView />
       </div>
+      <FooterView v-if="!isDashboardRoute" />
     </div>
   </div>
 </template>

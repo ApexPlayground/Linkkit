@@ -45,6 +45,18 @@ const router = createRouter({
         const auth = useAuthStore()
         auth.isAuthenticated ? next() : next('/login')
       },
+      children: [
+        {
+          path: '/dashboard/links',
+          name: 'links',
+          component: () => import('../views/DasboardLink.vue'),
+        },
+        {
+          path: '/dashboard/qr-codes',
+          name: 'qr-code',
+          component: () => import('../views/DashboardQR-Code.vue'),
+        },
+      ],
     },
   ],
 })
