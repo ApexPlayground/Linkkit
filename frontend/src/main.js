@@ -7,6 +7,7 @@ import 'primeicons/primeicons.css'
 import App from './App.vue'
 import router from './router'
 import AnimateOnScroll from 'primevue/animateonscroll'
+import Tooltip from 'primevue/tooltip'
 import './assets/main.css'
 
 const app = createApp(App)
@@ -23,6 +24,7 @@ app.use(PrimeVue, {
   },
 })
 app.directive('animateonscroll', AnimateOnScroll)
+app.directive('tooltip', Tooltip)
 app.use(createPinia())
 app.use(router)
 app.mount('#app')

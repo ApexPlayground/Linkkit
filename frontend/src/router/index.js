@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import HomeView from '../views/LandingPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -7,11 +7,11 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
+      name: 'landing',
       component: HomeView,
       beforeEnter: (to, from, next) => {
         const auth = useAuthStore()
-        auth.isAuthenticated ? next('/dashboard') : next()
+        auth.isAuthenticated ? next('/home') : next()
       },
     },
     {
@@ -25,7 +25,7 @@ const router = createRouter({
       component: () => import('../views/SignUpView.vue'),
       beforeEnter: (to, from, next) => {
         const auth = useAuthStore()
-        auth.isAuthenticated ? next('/dashboard') : next()
+        auth.isAuthenticated ? next('/home') : next()
       },
     },
     {
@@ -34,27 +34,37 @@ const router = createRouter({
       component: () => import('../views/LoginView.vue'),
       beforeEnter: (to, from, next) => {
         const auth = useAuthStore()
-        auth.isAuthenticated ? next('/dashboard') : next()
+        auth.isAuthenticated ? next('/home') : next()
       },
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('../views/DashboardView.vue'),
+      path: '/home',
+      name: 'home',
+      component: () => import('../views/HomeView.vue'),
       beforeEnter: (to, from, next) => {
         const auth = useAuthStore()
         auth.isAuthenticated ? next() : next('/login')
       },
       children: [
         {
-          path: '/dashboard/links',
-          name: 'links',
-          component: () => import('../views/DasboardLink.vue'),
+          path: '',
+          name: 'home-content',
+          component: () => import('../views/HomeContentView.vue'),
         },
         {
-          path: '/dashboard/qr-codes',
+          path: '/home/links',
+          name: 'links',
+          component: () => import('../views/LinksView.vue'),
+        },
+        {
+          path: '/home/qr-codes',
           name: 'qr-code',
-          component: () => import('../views/DashboardQR-Code.vue'),
+          component: () => import('../views/QR-CodeView.vue'),
+        },
+        {
+          path: '/home/analytics',
+          name: 'analytics',
+          component: () => import('../views/AnalyticsView.vue'),
         },
       ],
     },

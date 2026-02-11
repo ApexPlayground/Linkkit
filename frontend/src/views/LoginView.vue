@@ -1,132 +1,130 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import InputText from 'primevue/inputtext';
-import Password from 'primevue/password';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
-import Message from 'primevue/message';
+import InputText from 'primevue/inputtext'
+import Password from 'primevue/password'
+import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
+import Message from 'primevue/message'
 
-import api from '@/services/api';
-import { useAuthStore } from '@/stores/auth';
+import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter();
-const authStore = useAuthStore();
+const router = useRouter()
+const authStore = useAuthStore()
 
 const formData = ref({
     email: '',
     password: '',
-    rememberMe: false
-});
+})
 
-const loading = ref(false);
-const error = ref(null);
+const loading = ref(false)
+const error = ref(null)
 const touched = ref({
     email: false,
-    password: false
-});
+    password: false,
+})
 
 // Validation rules
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const validations = computed(() => ({
     email: {
         required: !formData.value.email.trim(),
-        valid: formData.value.email.trim() && !emailRegex.test(formData.value.email)
+        valid: formData.value.email.trim() && !emailRegex.test(formData.value.email),
     },
     password: {
         required: !formData.value.password,
-        minLength: formData.value.password && formData.value.password.length < 8
-    }
-}));
+        minLength: formData.value.password && formData.value.password.length < 8,
+    },
+}))
 
 const emailErrors = computed(() => {
-    if (!touched.value.email) return [];
-    const errors = [];
+    if (!touched.value.email) return []
+    const errors = []
     if (validations.value.email.required) {
-        errors.push('Email is required');
+        errors.push('Email is required')
     } else if (validations.value.email.valid) {
-        errors.push('Please enter a valid email address');
+        errors.push('Please enter a valid email address')
     }
-    return errors;
-});
+    return errors
+})
 
 const passwordErrors = computed(() => {
-    if (!touched.value.password) return [];
-    const errors = [];
+    if (!touched.value.password) return []
+    const errors = []
     if (validations.value.password.required) {
-        errors.push('Password is required');
+        errors.push('Password is required')
     } else if (validations.value.password.minLength) {
-        errors.push('Password must be at least 8 characters');
+        errors.push('Password must be at least 8 characters')
     }
-    return errors;
-});
+    return errors
+})
 
 const isFormValid = computed(() => {
-    return formData.value.email.trim() &&
+    return (
+        formData.value.email.trim() &&
         emailRegex.test(formData.value.email) &&
         formData.value.password &&
-        formData.value.password.length >= 8;
-});
+        formData.value.password.length >= 8
+    )
+})
 
 const handleBlur = (field) => {
-    touched.value[field] = true;
-};
+    touched.value[field] = true
+}
 
 const handleSubmit = async () => {
     // Mark all fields as touched
-    touched.value.email = true;
-    touched.value.password = true;
+    touched.value.email = true
+    touched.value.password = true
 
     // Validate before submitting
     if (!isFormValid.value) {
-        error.value = 'Please fix the errors before submitting';
-        return;
+        error.value = 'Please fix the errors before submitting'
+        return
     }
 
-    loading.value = true;
-    error.value = null;
+    loading.value = true
+    error.value = null
 
     try {
         const { data } = await api.post('v1/users/login', {
             email: formData.value.email.trim(),
-            password: formData.value.password
-        });
+            password: formData.value.password,
+        })
 
         // Update Pinia store with token and user info
-        authStore.login(
-            data.token,
-            {
-                id: data.id,
-                name: data.name,
-                email: data.email,
-                isAdmin: data.is_admin,
-                createdAt: data.createdAt
-            }
-        );
+        authStore.login(data.token, {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            isAdmin: data.is_admin,
+            createdAt: data.createdAt,
+        })
 
         // Redirect to dashboard
-        router.push('/dashboard');
+        router.push('/home')
     } catch (err) {
         if (err.response && err.response.data) {
-            error.value = err.response.data.message || err.response.data.error || 'Invalid email or password';
+            error.value =
+                err.response.data.message || err.response.data.error || 'Invalid email or password'
         } else {
-            error.value = err.message || 'Something went wrong. Please try again.';
+            error.value = err.message || 'Something went wrong. Please try again.'
         }
     } finally {
-        loading.value = false;
+        loading.value = false
     }
-};
+}
 
 const handleGoogleLogin = () => {
-    console.log('Google login clicked');
-};
+    console.log('Google login clicked')
+}
 </script>
 
 <template>
     <div class="flex items-center justify-center p-4 lg:p-8 mt-16 sm:mt-24">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden grid lg:grid-cols-2">
-
             <!-- Left Side  -->
             <div
                 class="hidden lg:flex bg-linear-to-br from-green-400 to-emerald-600 p-12 flex-col justify-center items-center relative">
@@ -134,12 +132,10 @@ const handleGoogleLogin = () => {
                     <h1 class="text-5xl font-bold mb-6">Hello Again!</h1>
                     <p class="text-xl text-white mb-8">Welcome back, we've missed you!</p>
 
-
                     <div class="w-full max-w-md">
                         <img src="/login.svg" alt="Login illustration" class="w-full h-auto" />
                     </div>
                 </div>
-
 
                 <div class="absolute top-10 left-10 w-20 h-20 border-4 border-white/30 rounded-full"></div>
                 <div class="absolute bottom-10 right-10 w-32 h-32 border-4 border-white/30 rounded-full"></div>
@@ -184,13 +180,7 @@ const handleGoogleLogin = () => {
                             </small>
                         </div>
 
-                        <!-- Remember Me & Forgot Password -->
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <Checkbox v-model="formData.rememberMe" inputId="rememberMe" :binary="true"
-                                    :disabled="loading" />
-                                <label for="rememberMe" class="ml-2 text-base cursor-pointer">Remember me</label>
-                            </div>
+                        <div class="flex items-center justify-self-end">
                             <a href="#" class="text-base text-green-400 hover:text-green-400/80 font-medium">
                                 Forgot password?
                             </a>

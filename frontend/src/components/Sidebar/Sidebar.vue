@@ -19,29 +19,29 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 const menuItems = [
     {
-        label: 'Dashboard',
-        icon: 'pi pi-th-large',
-        route: '/dashboard',
-        description: 'Overview & analytics'
+        label: 'Home',
+        icon: 'pi pi-home',
+        route: '/home',
+        description: 'Shorten link or generate QR code'
     },
     {
         label: 'Links',
         icon: 'pi pi-link',
-        route: '/dashboard/links',
-        description: 'Shorten and manage your links'
+        route: '/home/links',
+        description: 'Manage your links'
     },
     {
         label: 'QR Codes',
         icon: 'pi pi-qrcode',
-        route: '/dashboard/qr-codes',
-        description: 'Generate and manage QR codes'
+        route: '/home/qr-codes',
+        description: 'Manage QR codes'
     },
-    // {
-    //     label: 'Analytics',
-    //     icon: 'pi pi-chart-line',
-    //     route: '/dashboard/analytics',
-    //     description: 'View statistics'
-    // },
+    {
+        label: 'Analytics',
+        icon: 'pi pi-chart-line',
+        route: '/home/analytics',
+        description: 'View statistics'
+    },
 
 ]
 
@@ -79,7 +79,7 @@ const closeSidebar = () => {
             <!-- Sidebar -->
             <aside :class="[
                 'fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50 transition-transform duration-300 ease-in-out',
-                'w-72 flex flex-col',
+                'w-80 flex flex-col',
                 sidebarVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
             ]">
                 <SidebarHeader :user="authStore.user" :show-close-button="true" @close="closeSidebar" />

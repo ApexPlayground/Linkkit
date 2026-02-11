@@ -139,8 +139,7 @@ const handleSubmit = async () => {
             }
         )
 
-        // Redirect to dashboard
-        router.push('/dashboard')
+        router.push('/home')
     } catch (err) {
         error.value = err.response?.data?.message || 'Something went wrong. Please try again.'
     } finally {

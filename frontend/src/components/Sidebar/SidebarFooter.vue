@@ -50,7 +50,7 @@ const handleThemeChange = (value) => {
 
         <!-- Logout Button -->
         <button @click="emit('logout')"
-            class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-left text-red-600 hover:bg-red-50">
+            class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-left text-red-600 hover:bg-red-500/20">
             <i class="pi pi-sign-out text-base"></i>
             <span class="text-sm font-medium">Logout</span>
         </button>

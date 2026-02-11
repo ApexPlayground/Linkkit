@@ -34,6 +34,10 @@ const socialLinks = [
         severity: 'info'
     }
 ]
+
+const openLink = (url) => {
+    window.open(url)
+}
 </script>
 
 <template>
@@ -56,7 +60,7 @@ const socialLinks = [
                     <div class="flex gap-2">
                         <Button v-for="social in socialLinks" :key="social.name" :icon="social.icon"
                             :severity="social.severity" text rounded :aria-label="social.name"
-                            @click="window.open(social.url, '_blank')" class="!w-10 !h-10" />
+                            @click="() => openLink(social.url)" class="w-10! h-10!" />
                     </div>
                 </div>
 

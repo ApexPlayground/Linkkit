@@ -20,12 +20,12 @@ const gridStyle = computed(() => ({
       radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.35) 1px, transparent 0),
       radial-gradient(circle at 50% 50%, rgba(16,185,129,0.25) 0%, rgba(16,185,129,0.1) 40%, transparent 80%)
     `,
-  backgroundSize: '20px 20px, 100% 100%'
+  backgroundSize: '20px 20px, 100% 100%',
 }))
 
 // Check if current route is dashboard
-const isDashboardRoute = computed(() => {
-  return route.path.startsWith('/dashboard')
+const isHomeRoute = computed(() => {
+  return route.path.startsWith('/home')
 })
 
 onMounted(() => {
@@ -35,13 +35,36 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-white text-black transition-colors duration-300 relative">
-    <div v-if="!isDashboardRoute" class="absolute inset-0 z-0" :style="gridStyle" />
-    <div :class="isDashboardRoute ? '' : 'relative z-10'">
-      <Nav v-if="!isDashboardRoute" />
-      <div :class="isDashboardRoute ? '' : 'mx-auto py-24'">
-        <RouterView />
+    <div v-if="!isHomeRoute" class="absolute inset-0 z-0" :style="gridStyle" />
+    <div :class="isHomeRoute ? '' : 'relative z-10'">
+      <Nav v-if="!isHomeRoute" />
+      <div :class="isHomeRoute ? '' : 'mx-auto py-24'">
+        <Transition name="page" mode="out-in">
+          <RouterView />
+        </Transition>
       </div>
-      <FooterView v-if="!isDashboardRoute" />
+
+      <FooterView v-if="!isHomeRoute" />
     </div>
   </div>
 </template>
+<style>
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-to,
+.page-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
