@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/netip"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ApexPlayground/Linkkit/model"
@@ -21,10 +23,16 @@ type ClickJob struct {
 }
 
 type ClickService struct {
-	DB      *gorm.DB
-	GeoIPDB *geoip2.Reader
-	jobs    chan ClickJob
-	done    chan struct{}
+	DB             *gorm.DB
+	GeoIPDB        *geoip2.Reader
+	jobs           chan ClickJob
+	done           chan struct{}
+	wg             sync.WaitGroup
+	batchSize      int
+	flushInterval  time.Duration
+	processedCount uint64
+	errorCount     uint64
+	droppedCount   uint64
 }
 
 func NewClickService(db *gorm.DB, geoipPath string, numWorkers int) *ClickService {
@@ -34,38 +42,100 @@ func NewClickService(db *gorm.DB, geoipPath string, numWorkers int) *ClickServic
 	}
 
 	s := &ClickService{
-		DB:      db,
-		GeoIPDB: geoIPDB,
-		jobs:    make(chan ClickJob, 1000), // Buffer for 1000 pending clicks
-		done:    make(chan struct{}),
+		DB:            db,
+		GeoIPDB:       geoIPDB,
+		jobs:          make(chan ClickJob, 1000),
+		done:          make(chan struct{}),
+		batchSize:     100,
+		flushInterval: 5 * time.Second,
 	}
 
 	// Start worker pool
-	for i := range numWorkers {
-		go s.worker(i)
+	for i := 0; i < numWorkers; i++ {
+		s.wg.Add(1)
+		go s.batchWorker(i)
 	}
 
+	log.Printf("ClickService started with %d workers", numWorkers)
 	return s
 }
 
-func (s *ClickService) worker(id int) {
+func (s *ClickService) batchWorker(id int) {
+	defer s.wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Click worker %d panicked: %v", id, r)
+		}
+	}()
+
 	log.Printf("Click worker %d started", id)
+	batch := make([]ClickJob, 0, s.batchSize)
+	ticker := time.NewTicker(s.flushInterval)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case job := <-s.jobs:
-			s.processClick(job)
+		case job, ok := <-s.jobs:
+			if !ok {
+				// Channel closed, process remaining batch and exit
+				if len(batch) > 0 {
+					s.processBatch(batch)
+				}
+				log.Printf("Click worker %d stopped", id)
+				return
+			}
+
+			batch = append(batch, job)
+			if len(batch) >= s.batchSize {
+				s.processBatch(batch)
+				batch = batch[:0]
+			}
+
+		case <-ticker.C:
+			if len(batch) > 0 {
+				s.processBatch(batch)
+				batch = batch[:0]
+			}
+
 		case <-s.done:
+			// Process remaining clicks before stopping
+			if len(batch) > 0 {
+				s.processBatch(batch)
+			}
 			log.Printf("Click worker %d stopped", id)
 			return
 		}
 	}
 }
 
-func (s *ClickService) processClick(job ClickJob) {
+func (s *ClickService) processBatch(jobs []ClickJob) {
+	if len(jobs) == 0 {
+		return
+	}
+
+	// Process entire batch in a single transaction for better performance
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		for _, job := range jobs {
+			if err := s.processClickInTx(tx, job); err != nil {
+				// Log but continue processing other clicks in batch
+				log.Printf("Error processing click for link %d: %v", job.LinkID, err)
+				atomic.AddUint64(&s.errorCount, 1)
+			} else {
+				atomic.AddUint64(&s.processedCount, 1)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("Batch transaction error: %v", err)
+	}
+}
+
+func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 	// Parse User-Agent
 	ua := useragent.New(job.UserAgentStr)
 	browserName, _ := ua.Browser()
-
 	device := "Desktop"
 	if ua.Mobile() {
 		device = "Mobile"
@@ -73,42 +143,122 @@ func (s *ClickService) processClick(job ClickJob) {
 		device = "Bot"
 	}
 
+	// Filter out bot traffic
+	if device == "Bot" {
+		log.Printf("Filtered bot click for link %d", job.LinkID)
+		return nil
+	}
+
+	// Normalize country
 	country := "Unknown"
-	if c, err := s.LookupCountry(job.IP); err == nil {
+	if c, err := s.LookupCountry(job.IP); err == nil && c != "" {
 		country = c
 	}
 
-	// Daily bucket (UTC)
-	day := time.Now().UTC().Truncate(24 * time.Hour)
+	// Normalize referrer
+	referrer := job.Referrer
+	if referrer == "" {
+		referrer = "direct"
+	}
 
-	stat := model.ClickStat{
+	day := time.Now().UTC().Truncate(24 * time.Hour)
+	now := time.Now()
+
+	// Store raw click event
+	click := model.Click{
 		LinkID:   job.LinkID,
 		Country:  country,
 		Device:   device,
 		Browser:  browserName,
-		Referrer: job.Referrer,
-		Day:      day,
-		Count:    1,
+		Referrer: referrer,
+		IP:       job.IP,
+	}
+	if err := tx.Create(&click).Error; err != nil {
+		return fmt.Errorf("raw click: %w", err)
 	}
 
-	err := s.DB.Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{Name: "link_id"},
-			{Name: "country"},
-			{Name: "device"},
-			{Name: "browser"},
-			{Name: "referrer"},
-			{Name: "day"},
-		},
+	// Update daily stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "link_id"}, {Name: "day"}},
 		DoUpdates: clause.Assignments(map[string]any{
-			"count":      gorm.Expr("click_stats.count + 1"),
-			"updated_at": time.Now(),
+			"clicks":     gorm.Expr("daily_link_stats.clicks + 1"),
+			"updated_at": now,
 		}),
-	}).Create(&stat).Error
-
-	if err != nil {
-		log.Printf("Click tracking error for link %d: %v", job.LinkID, err)
+	}).Create(&model.DailyLinkStats{
+		LinkID: job.LinkID,
+		Day:    day,
+		Clicks: 1,
+	}).Error; err != nil {
+		return fmt.Errorf("daily stats: %w", err)
 	}
+
+	// Update country stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "link_id"}, {Name: "country"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"clicks":     gorm.Expr("link_country_stats.clicks + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.LinkCountryStats{
+		LinkID:  job.LinkID,
+		Country: country,
+		Clicks:  1,
+	}).Error; err != nil {
+		return fmt.Errorf("country stats: %w", err)
+	}
+
+	// Update device stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "link_id"}, {Name: "device"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"clicks":     gorm.Expr("link_device_stats.clicks + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.LinkDeviceStats{
+		LinkID: job.LinkID,
+		Device: device,
+		Clicks: 1,
+	}).Error; err != nil {
+		return fmt.Errorf("device stats: %w", err)
+	}
+
+	// Update browser stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "link_id"}, {Name: "browser"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"clicks":     gorm.Expr("link_browser_stats.clicks + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.LinkBrowserStats{
+		LinkID:  job.LinkID,
+		Browser: browserName,
+		Clicks:  1,
+	}).Error; err != nil {
+		return fmt.Errorf("browser stats: %w", err)
+	}
+
+	// Update referrer stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "link_id"}, {Name: "referrer"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"clicks":     gorm.Expr("link_referrer_stats.clicks + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.LinkReferrerStats{
+		LinkID:   job.LinkID,
+		Referrer: referrer,
+		Clicks:   1,
+	}).Error; err != nil {
+		return fmt.Errorf("referrer stats: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ClickService) GetStats() (processed, errors, dropped uint64) {
+	return atomic.LoadUint64(&s.processedCount),
+		atomic.LoadUint64(&s.errorCount),
+		atomic.LoadUint64(&s.droppedCount)
 }
 
 func (s *ClickService) TrackClick(linkID uint, ip, userAgentStr, referrer string) {
@@ -124,24 +274,47 @@ func (s *ClickService) TrackClick(linkID uint, ip, userAgentStr, referrer string
 	case s.jobs <- job:
 		// Job queued successfully
 	default:
-		log.Printf("Click job queue full, dropping click for link %d", linkID)
+		atomic.AddUint64(&s.droppedCount, 1)
+		log.Printf("Click job queue full, dropping click for link %d (total dropped: %d)",
+			linkID, atomic.LoadUint64(&s.droppedCount))
 	}
 }
 
 func (s *ClickService) Close() {
-	// Signal all workers to stop
+	log.Println("Shutting down ClickService...")
+
+	// Signal workers to finish current work
 	close(s.done)
 
-	// Wait a bit for workers to finish current jobs
-	time.Sleep(2 * time.Second)
-
-	// Close job channel
+	// Stop accepting new jobs
 	close(s.jobs)
+
+	// Wait for all workers to complete with timeout
+	waitCh := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(waitCh)
+	}()
+
+	select {
+	case <-waitCh:
+		processed, errors, dropped := s.GetStats()
+		log.Printf("ClickService shutdown complete. Processed: %d, Errors: %d, Dropped: %d",
+			processed, errors, dropped)
+	case <-time.After(30 * time.Second):
+		processed, errors, dropped := s.GetStats()
+		log.Printf("ClickService shutdown timeout. Processed: %d, Errors: %d, Dropped: %d",
+			processed, errors, dropped)
+	}
 
 	// Close GeoIP database
 	if s.GeoIPDB != nil {
-		s.GeoIPDB.Close()
+		if err := s.GeoIPDB.Close(); err != nil {
+			log.Printf("Error closing GeoIP database: %v", err)
+		}
 	}
+
+	log.Println("ClickService stopped")
 }
 
 func (s *ClickService) LookupCountry(ipStr string) (string, error) {

@@ -24,8 +24,13 @@ func Connect() *gorm.DB {
 
 	models := []any{
 		&model.Link{},
-		&model.ClickStat{},
+		&model.Click{},
 		&model.User{},
+		&model.DailyLinkStats{},
+		&model.LinkCountryStats{},
+		&model.LinkDeviceStats{},
+		&model.LinkBrowserStats{},
+		&model.LinkReferrerStats{},
 	}
 
 	db.AutoMigrate(models...)
