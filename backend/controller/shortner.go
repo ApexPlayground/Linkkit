@@ -1,46 +1,141 @@
 package controller
 
 import (
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/ApexPlayground/Linkkit/service"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func ShortnerController(c *gin.Context) {
+var linkSvc *service.LinkService
+
+func InitLinkController(svc *service.LinkService) {
+	linkSvc = svc
+}
+
+var ShortURLPrefix = os.Getenv("BASE_URL")
+
+func CreateShortLink(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
 	var body struct {
 		LongUrl string `json:"long_url"`
 	}
-
-	// read request
 	if err := c.ShouldBindJSON(&body); err != nil {
 		log.Println("Failed to parse shortener request:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	// call service
 	link, err := service.CreateShortLink(userID, body.LongUrl)
+
+	if errors.Is(err, service.ErrURLEmpty) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL cannot be empty"})
+		return
+	}
+	if errors.Is(err, service.ErrURLTooLong) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL is too long"})
+		return
+	}
+	if errors.Is(err, service.ErrURLInvalid) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
+		return
+	}
+	if errors.Is(err, service.ErrLinkExists) {
+		c.JSON(http.StatusOK, gin.H{
+			"long_url":  link.LongUrl,
+			"short_url": FormatShortURL(link.ShortCode),
+			"message":   "Link already exists",
+		})
+		return
+	}
 	if err != nil {
 		log.Println("Failed to create short link:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
-	shortUrl := FormatShortURL(link.ShortCode)
-
-	// success response
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusCreated, gin.H{
 		"long_url":  link.LongUrl,
-		"short_url": shortUrl,
+		"short_url": FormatShortURL(link.ShortCode),
 	})
 }
 
-const ShortURLPrefix = "http://127.0.0.1:8080/"
+func LinkRedirect(c *gin.Context) {
+	shortcode := c.Param("shortcode")
+
+	longURL, err := linkSvc.ResolveLink(
+		shortcode,
+		c.ClientIP(),
+		c.Request.UserAgent(),
+		c.Request.Referer(),
+	)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Short URL not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Server error"})
+		return
+	}
+
+	c.Redirect(http.StatusFound, longURL)
+}
 
 func FormatShortURL(shortCode string) string {
 	return ShortURLPrefix + shortCode
+}
+
+func LinkListController(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	links, err := linkSvc.GetUserShortLinks(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch shortened links"})
+		return
+	}
+
+	response := make([]map[string]interface{}, 0)
+	for _, link := range links {
+		response = append(response, map[string]interface{}{
+			"id":         link.ID,
+			"long_url":   link.LongUrl,
+			"short_url":  ShortURLPrefix + link.ShortCode,
+			"created_at": link.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    response,
+	})
+}
+
+func LinkDeleteController(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	linkID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid link ID"})
+		return
+	}
+
+	if err := linkSvc.DeleteLink(uint(linkID), userID); err != nil {
+		if errors.Is(err, service.ErrLinkNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete link"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Link deleted successfully",
+	})
 }

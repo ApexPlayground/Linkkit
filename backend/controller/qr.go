@@ -75,7 +75,7 @@ func QRListController(c *gin.Context) {
 		return
 	}
 
-	var response []map[string]interface{}
+	response := make([]map[string]interface{}, 0)
 	for _, qr := range qrs {
 		response = append(response, map[string]interface{}{
 			"id":           qr.ID,

@@ -47,7 +47,7 @@ func main() {
 
 	// Initialize Redirect Service (existing)
 	redirectSvc := service.NewRedirectService(db, clickSvc)
-	controller.InitRedirectController(redirectSvc)
+	controller.InitLinkController(redirectSvc)
 	fmt.Println("Redirect Service initialized")
 
 	// Setup Gin router
