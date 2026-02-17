@@ -8,17 +8,32 @@ import (
 
 type Link struct {
 	ID        uint           `gorm:"primaryKey"`
+	UserID    uint           `gorm:"not null;index"`
 	LongUrl   string         `gorm:"not null"`
 	ShortCode string         `gorm:"uniqueIndex"`
 	CreatedAt time.Time      `gorm:"not null"`
 	UpdatedAt time.Time      `gorm:"not null"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
+
+	User User `gorm:"foreignKey:UserID"`
 }
 
-// Raw click events - stores individual clicks
+type QRCode struct {
+	ID          uint   `gorm:"primaryKey"`
+	UserID      uint   `gorm:"not null;index"`
+	OriginalURL string `gorm:"not null;size:2048"`
+	QRImage     []byte `gorm:"type:bytea"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
+
+	User User `gorm:"foreignKey:UserID"`
+}
+
 type Click struct {
 	ID        uint      `gorm:"primaryKey"`
 	LinkID    uint      `gorm:"not null;index:idx_link_created"`
+	QRID      uint      `gorm:"not null;index:idx_link_created"`
 	Country   string    `gorm:"size:50"`
 	Device    string    `gorm:"size:20"`
 	Browser   string    `gorm:"size:50"`
@@ -27,7 +42,6 @@ type Click struct {
 	CreatedAt time.Time `gorm:"not null;index:idx_link_created"`
 }
 
-// Aggregated stats, one row per link per day
 type DailyLinkStats struct {
 	ID        uint      `gorm:"primaryKey"`
 	LinkID    uint      `gorm:"not null;uniqueIndex:idx_daily_link"`
@@ -36,7 +50,6 @@ type DailyLinkStats struct {
 	UpdatedAt time.Time
 }
 
-// Country breakdown, one row per link per country
 type LinkCountryStats struct {
 	ID        uint   `gorm:"primaryKey"`
 	LinkID    uint   `gorm:"not null;uniqueIndex:idx_link_country"`
@@ -45,7 +58,6 @@ type LinkCountryStats struct {
 	UpdatedAt time.Time
 }
 
-// Device breakdown, one row per link per device type
 type LinkDeviceStats struct {
 	ID        uint   `gorm:"primaryKey"`
 	LinkID    uint   `gorm:"not null;uniqueIndex:idx_link_device"`
@@ -54,7 +66,6 @@ type LinkDeviceStats struct {
 	UpdatedAt time.Time
 }
 
-// Browser breakdown, one row per link per browser
 type LinkBrowserStats struct {
 	ID        uint   `gorm:"primaryKey"`
 	LinkID    uint   `gorm:"not null;uniqueIndex:idx_link_browser"`
@@ -63,11 +74,50 @@ type LinkBrowserStats struct {
 	UpdatedAt time.Time
 }
 
-// Referrer breakdown, one row per link per referrer
 type LinkReferrerStats struct {
 	ID        uint   `gorm:"primaryKey"`
 	LinkID    uint   `gorm:"not null;uniqueIndex:idx_link_referrer"`
 	Referrer  string `gorm:"not null;size:500;uniqueIndex:idx_link_referrer"`
 	Clicks    uint   `gorm:"not null;default:0"`
+	UpdatedAt time.Time
+}
+
+type DailyQRStats struct {
+	ID        uint      `gorm:"primaryKey"`
+	QRID      uint      `gorm:"not null;uniqueIndex:idx_daily_qr"`
+	Day       time.Time `gorm:"not null;type:date;uniqueIndex:idx_daily_qr"`
+	Scans     uint      `gorm:"not null;default:0"`
+	UpdatedAt time.Time
+}
+
+type QRCountryStats struct {
+	ID        uint   `gorm:"primaryKey"`
+	QRID      uint   `gorm:"not null;uniqueIndex:idx_qr_country"`
+	Country   string `gorm:"not null;size:50;uniqueIndex:idx_qr_country"`
+	Scans     uint   `gorm:"not null;default:0"`
+	UpdatedAt time.Time
+}
+
+type QRDeviceStats struct {
+	ID        uint   `gorm:"primaryKey"`
+	QRID      uint   `gorm:"not null;uniqueIndex:idx_qr_device"`
+	Device    string `gorm:"not null;size:20;uniqueIndex:idx_qr_device"`
+	Scans     uint   `gorm:"not null;default:0"`
+	UpdatedAt time.Time
+}
+
+type QRBrowserStats struct {
+	ID        uint   `gorm:"primaryKey"`
+	QRID      uint   `gorm:"not null;uniqueIndex:idx_qr_browser"`
+	Browser   string `gorm:"not null;size:50;uniqueIndex:idx_qr_browser"`
+	Scans     uint   `gorm:"not null;default:0"`
+	UpdatedAt time.Time
+}
+
+type QRReferrerStats struct {
+	ID        uint   `gorm:"primaryKey"`
+	QRID      uint   `gorm:"not null;uniqueIndex:idx_qr_referrer"`
+	Referrer  string `gorm:"not null;size:500;uniqueIndex:idx_qr_referrer"`
+	Scans     uint   `gorm:"not null;default:0"`
 	UpdatedAt time.Time
 }

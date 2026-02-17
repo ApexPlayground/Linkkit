@@ -16,7 +16,8 @@ import (
 )
 
 type ClickJob struct {
-	LinkID       uint
+	Type         string // "link" or "qr"
+	ResourceID   uint
 	IP           string
 	UserAgentStr string
 	Referrer     string
@@ -77,7 +78,6 @@ func (s *ClickService) batchWorker(id int) {
 		select {
 		case job, ok := <-s.jobs:
 			if !ok {
-				// Channel closed, process remaining batch and exit
 				if len(batch) > 0 {
 					s.processBatch(batch)
 				}
@@ -98,7 +98,6 @@ func (s *ClickService) batchWorker(id int) {
 			}
 
 		case <-s.done:
-			// Process remaining clicks before stopping
 			if len(batch) > 0 {
 				s.processBatch(batch)
 			}
@@ -113,12 +112,10 @@ func (s *ClickService) processBatch(jobs []ClickJob) {
 		return
 	}
 
-	// Process entire batch in a single transaction for better performance
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		for _, job := range jobs {
 			if err := s.processClickInTx(tx, job); err != nil {
-				// Log but continue processing other clicks in batch
-				log.Printf("Error processing click for link %d: %v", job.LinkID, err)
+				log.Printf("Error processing %s click for ID %d: %v", job.Type, job.ResourceID, err)
 				atomic.AddUint64(&s.errorCount, 1)
 			} else {
 				atomic.AddUint64(&s.processedCount, 1)
@@ -145,7 +142,7 @@ func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 
 	// Filter out bot traffic
 	if device == "Bot" {
-		log.Printf("Filtered bot click for link %d", job.LinkID)
+		log.Printf("Filtered bot %s for ID %d", job.Type, job.ResourceID)
 		return nil
 	}
 
@@ -166,17 +163,39 @@ func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 
 	// Store raw click event
 	click := model.Click{
-		LinkID:   job.LinkID,
+		IP:       job.IP,
 		Country:  country,
 		Device:   device,
 		Browser:  browserName,
 		Referrer: referrer,
-		IP:       job.IP,
 	}
+
+	// Set LinkID or QRID based on type
+	switch job.Type {
+	case "link":
+		click.LinkID = job.ResourceID
+		click.QRID = 0
+	case "qr":
+		click.LinkID = 0
+		click.QRID = job.ResourceID
+	}
+
 	if err := tx.Create(&click).Error; err != nil {
 		return fmt.Errorf("raw click: %w", err)
 	}
 
+	// Update stats based on type
+	switch job.Type {
+	case "link":
+		return s.updateLinkStats(tx, job.ResourceID, country, device, browserName, referrer, day, now)
+	case "qr":
+		return s.updateQRStats(tx, job.ResourceID, country, device, browserName, referrer, day, now)
+	}
+
+	return nil
+}
+
+func (s *ClickService) updateLinkStats(tx *gorm.DB, linkID uint, country, device, browser, referrer string, day, now time.Time) error {
 	// Update daily stats
 	if err := tx.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "link_id"}, {Name: "day"}},
@@ -185,7 +204,7 @@ func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 			"updated_at": now,
 		}),
 	}).Create(&model.DailyLinkStats{
-		LinkID: job.LinkID,
+		LinkID: linkID,
 		Day:    day,
 		Clicks: 1,
 	}).Error; err != nil {
@@ -200,7 +219,7 @@ func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 			"updated_at": now,
 		}),
 	}).Create(&model.LinkCountryStats{
-		LinkID:  job.LinkID,
+		LinkID:  linkID,
 		Country: country,
 		Clicks:  1,
 	}).Error; err != nil {
@@ -215,7 +234,7 @@ func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 			"updated_at": now,
 		}),
 	}).Create(&model.LinkDeviceStats{
-		LinkID: job.LinkID,
+		LinkID: linkID,
 		Device: device,
 		Clicks: 1,
 	}).Error; err != nil {
@@ -230,8 +249,8 @@ func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 			"updated_at": now,
 		}),
 	}).Create(&model.LinkBrowserStats{
-		LinkID:  job.LinkID,
-		Browser: browserName,
+		LinkID:  linkID,
+		Browser: browser,
 		Clicks:  1,
 	}).Error; err != nil {
 		return fmt.Errorf("browser stats: %w", err)
@@ -245,11 +264,90 @@ func (s *ClickService) processClickInTx(tx *gorm.DB, job ClickJob) error {
 			"updated_at": now,
 		}),
 	}).Create(&model.LinkReferrerStats{
-		LinkID:   job.LinkID,
+		LinkID:   linkID,
 		Referrer: referrer,
 		Clicks:   1,
 	}).Error; err != nil {
 		return fmt.Errorf("referrer stats: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ClickService) updateQRStats(tx *gorm.DB, qrID uint, country, device, browser, referrer string, day, now time.Time) error {
+	// Update daily QR stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "qr_id"}, {Name: "day"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"scans":      gorm.Expr("daily_qr_stats.scans + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.DailyQRStats{
+		QRID:  qrID,
+		Day:   day,
+		Scans: 1,
+	}).Error; err != nil {
+		return fmt.Errorf("daily qr stats: %w", err)
+	}
+
+	// Update country stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "qr_id"}, {Name: "country"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"scans":      gorm.Expr("qr_country_stats.scans + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.QRCountryStats{
+		QRID:    qrID,
+		Country: country,
+		Scans:   1,
+	}).Error; err != nil {
+		return fmt.Errorf("qr country stats: %w", err)
+	}
+
+	// Update device stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "qr_id"}, {Name: "device"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"scans":      gorm.Expr("qr_device_stats.scans + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.QRDeviceStats{
+		QRID:   qrID,
+		Device: device,
+		Scans:  1,
+	}).Error; err != nil {
+		return fmt.Errorf("qr device stats: %w", err)
+	}
+
+	// Update browser stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "qr_id"}, {Name: "browser"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"scans":      gorm.Expr("qr_browser_stats.scans + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.QRBrowserStats{
+		QRID:    qrID,
+		Browser: browser,
+		Scans:   1,
+	}).Error; err != nil {
+		return fmt.Errorf("qr browser stats: %w", err)
+	}
+
+	// Update referrer stats
+	if err := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "qr_id"}, {Name: "referrer"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"scans":      gorm.Expr("qr_referrer_stats.scans + 1"),
+			"updated_at": now,
+		}),
+	}).Create(&model.QRReferrerStats{
+		QRID:     qrID,
+		Referrer: referrer,
+		Scans:    1,
+	}).Error; err != nil {
+		return fmt.Errorf("qr referrer stats: %w", err)
 	}
 
 	return nil
@@ -261,15 +359,16 @@ func (s *ClickService) GetStats() (processed, errors, dropped uint64) {
 		atomic.LoadUint64(&s.droppedCount)
 }
 
+// TrackClick for shortened links
 func (s *ClickService) TrackClick(linkID uint, ip, userAgentStr, referrer string) {
 	job := ClickJob{
-		LinkID:       linkID,
+		Type:         "link",
+		ResourceID:   linkID,
 		IP:           ip,
 		UserAgentStr: userAgentStr,
 		Referrer:     referrer,
 	}
 
-	// Non-blocking send to job queue
 	select {
 	case s.jobs <- job:
 		// Job queued successfully
@@ -280,16 +379,32 @@ func (s *ClickService) TrackClick(linkID uint, ip, userAgentStr, referrer string
 	}
 }
 
+// TrackQRScan for QR codes
+func (s *ClickService) TrackQRScan(qrID uint, ip, userAgentStr, referrer string) {
+	job := ClickJob{
+		Type:         "qr",
+		ResourceID:   qrID,
+		IP:           ip,
+		UserAgentStr: userAgentStr,
+		Referrer:     referrer,
+	}
+
+	select {
+	case s.jobs <- job:
+		// Job queued successfully
+	default:
+		atomic.AddUint64(&s.droppedCount, 1)
+		log.Printf("QR scan job queue full, dropping scan for QR %d (total dropped: %d)",
+			qrID, atomic.LoadUint64(&s.droppedCount))
+	}
+}
+
 func (s *ClickService) Close() {
 	log.Println("Shutting down ClickService...")
 
-	// Signal workers to finish current work
 	close(s.done)
-
-	// Stop accepting new jobs
 	close(s.jobs)
 
-	// Wait for all workers to complete with timeout
 	waitCh := make(chan struct{})
 	go func() {
 		s.wg.Wait()
@@ -307,7 +422,6 @@ func (s *ClickService) Close() {
 			processed, errors, dropped)
 	}
 
-	// Close GeoIP database
 	if s.GeoIPDB != nil {
 		if err := s.GeoIPDB.Close(); err != nil {
 			log.Printf("Error closing GeoIP database: %v", err)

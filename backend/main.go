@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/ApexPlayground/Linkkit/config"
 	"github.com/ApexPlayground/Linkkit/controller"
@@ -33,14 +35,25 @@ func main() {
 	config.InitRedis()
 	fmt.Println("Redis connected")
 
+	// Initialize Click Service (shared by both links and QR codes)
 	geoipPath := os.Getenv("GEOIP_DB_PATH")
 	clickSvc := service.NewClickService(db, geoipPath, 5)
+	fmt.Println("Click Service initialized with 5 workers")
+
+	// Initialize QR Service (NEW!)
+	qrSvc := service.NewQRService(db, clickSvc)
+	controller.InitQRController(qrSvc)
+	fmt.Println("QR Service initialized")
+
+	// Initialize Redirect Service (existing)
 	redirectSvc := service.NewRedirectService(db, clickSvc)
-
 	controller.InitRedirectController(redirectSvc)
+	fmt.Println("Redirect Service initialized")
 
+	// Setup Gin router
 	router := gin.Default()
 
+	// CORS configuration
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -50,10 +63,26 @@ func main() {
 
 	// Mount all route groups
 	routes.UserSetupRouter(router)
-	routes.ShortenerSetupRouter(router)
+	routes.AppSetupRouter(router)
 
-	fmt.Println("Starting server on :8080")
-	if err := router.Run(":8080"); err != nil {
-		log.Fatal("Failed to run server:", err)
-	}
+	// Graceful shutdown setup
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server in goroutine
+	go func() {
+		fmt.Println("Starting server on :8080")
+		if err := router.Run(":8080"); err != nil {
+			log.Fatal("Failed to run server:", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	sig := <-quit
+	fmt.Println("Received signal:", sig)
+
+	// Graceful shutdown for ClickService
+	clickSvc.Close()
+	fmt.Println("ClickService stopped")
+	fmt.Println("Server exiting")
 }

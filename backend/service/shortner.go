@@ -12,7 +12,7 @@ import (
 	"github.com/ApexPlayground/Linkkit/util"
 )
 
-func CreateShortLink(longUrl string) (model.Link, error) {
+func CreateShortLink(userID uint, longUrl string) (*model.Link, error) {
 	const (
 		codeLength = 7
 		maxRetries = 5
@@ -21,43 +21,43 @@ func CreateShortLink(longUrl string) (model.Link, error) {
 
 	longUrl = strings.TrimSpace(longUrl)
 	if len(longUrl) == 0 {
-		return model.Link{}, fmt.Errorf("URL cannot be empty")
+		return &model.Link{}, fmt.Errorf("URL cannot be empty")
 	}
-
 	if len(longUrl) > maxURLLen {
-		return model.Link{}, fmt.Errorf("URL too long")
+		return &model.Link{}, fmt.Errorf("URL too long")
 	}
-
 	parsed, err := url.ParseRequestURI(longUrl)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return model.Link{}, fmt.Errorf("invalid URL")
+		return &model.Link{}, fmt.Errorf("invalid URL")
 	}
 
+	// check for existing long url
+	var existing model.Link
+	if err := config.DB.Where("user_id = ? AND long_url = ?", userID, longUrl).First(&existing).Error; err == nil {
+		return &existing, nil
+	}
+
+	// Generate short code
 	for range maxRetries {
 		code, err := GenerateShortCode(codeLength)
 		if err != nil {
-			return model.Link{}, fmt.Errorf("failed to generate shortcode")
+			return &model.Link{}, fmt.Errorf("failed to generate shortcode")
 		}
-
-		link := model.Link{
+		link := &model.Link{
+			UserID:    userID,
 			LongUrl:   longUrl,
 			ShortCode: code,
 		}
-
 		err = config.DB.Create(&link).Error
 		if err == nil {
 			return link, nil
 		}
-
-		// Retry ONLY on unique constraint violation
 		if strings.Contains(err.Error(), "duplicate key") {
 			continue
 		}
-
-		return model.Link{}, fmt.Errorf("could not save link: %v", err)
+		return &model.Link{}, fmt.Errorf("could not save link: %v", err)
 	}
-
-	return model.Link{}, fmt.Errorf("could not generate unique shortcode after %d retries", maxRetries)
+	return &model.Link{}, fmt.Errorf("could not generate unique shortcode after %d retries", maxRetries)
 }
 
 // GenerateShortCode generates a short code based on the long URL
@@ -80,11 +80,10 @@ func GenerateShortCode(length int) (string, error) {
 			continue
 		}
 
-		if len(encoded) > length {
-			encoded = encoded[:length]
+		if len(encoded) >= length {
+			return encoded[:length], nil
 		}
 
-		return encoded, nil
 	}
 	return "", fmt.Errorf("failed to generate shortcode after %d attempts", maxAttempts)
 }

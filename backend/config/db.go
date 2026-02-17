@@ -31,6 +31,12 @@ func Connect() *gorm.DB {
 		&model.LinkDeviceStats{},
 		&model.LinkBrowserStats{},
 		&model.LinkReferrerStats{},
+		&model.QRCode{},
+		&model.QRBrowserStats{},
+		&model.QRCountryStats{},
+		&model.QRDeviceStats{},
+		&model.QRReferrerStats{},
+		&model.DailyQRStats{},
 	}
 
 	db.AutoMigrate(models...)

@@ -9,6 +9,8 @@ import (
 )
 
 func ShortnerController(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
 	var body struct {
 		LongUrl string `json:"long_url"`
 	}
@@ -21,7 +23,7 @@ func ShortnerController(c *gin.Context) {
 	}
 
 	// call service
-	link, err := service.CreateShortLink(body.LongUrl)
+	link, err := service.CreateShortLink(userID, body.LongUrl)
 	if err != nil {
 		log.Println("Failed to create short link:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
