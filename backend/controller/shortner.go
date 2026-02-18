@@ -33,36 +33,38 @@ func CreateShortLink(c *gin.Context) {
 	}
 
 	link, err := service.CreateShortLink(userID, body.LongUrl)
-
-	if errors.Is(err, service.ErrURLEmpty) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "URL cannot be empty"})
-		return
-	}
-	if errors.Is(err, service.ErrURLTooLong) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "URL is too long"})
-		return
-	}
-	if errors.Is(err, service.ErrURLInvalid) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
-		return
-	}
-	if errors.Is(err, service.ErrLinkExists) {
-		c.JSON(http.StatusOK, gin.H{
-			"long_url":  link.LongUrl,
-			"short_url": FormatShortURL(link.ShortCode),
-			"message":   "Link already exists",
-		})
-		return
-	}
 	if err != nil {
-		log.Println("Failed to create short link:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
+		switch {
+		case errors.Is(err, service.ErrURLEmpty):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "URL cannot be empty"})
+			return
+		case errors.Is(err, service.ErrURLTooLong):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "URL is too long"})
+			return
+		case errors.Is(err, service.ErrURLInvalid):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
+			return
+		case errors.Is(err, service.ErrLinkExists):
+			// Inform user link already exists
+			c.JSON(http.StatusOK, gin.H{
+				"long_url":    link.LongUrl,
+				"short_url":   FormatShortURL(link.ShortCode),
+				"message":     "Link already exists",
+				"is_existing": true,
+			})
+			return
+		default:
+			log.Println("Failed to create short link:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
 	}
 
+	// Successfully created new link
 	c.JSON(http.StatusCreated, gin.H{
-		"long_url":  link.LongUrl,
-		"short_url": FormatShortURL(link.ShortCode),
+		"long_url":    link.LongUrl,
+		"short_url":   FormatShortURL(link.ShortCode),
+		"is_existing": false,
 	})
 }
 
@@ -88,7 +90,17 @@ func LinkRedirect(c *gin.Context) {
 }
 
 func FormatShortURL(shortCode string) string {
-	return ShortURLPrefix + shortCode
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
+	// Ensure baseURL ends with /
+	if baseURL[len(baseURL)-1] != '/' {
+		baseURL += "/"
+	}
+
+	return baseURL + shortCode
 }
 
 func LinkListController(c *gin.Context) {

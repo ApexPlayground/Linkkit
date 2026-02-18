@@ -9,7 +9,7 @@ import (
 func AppSetupRouter(router *gin.Engine) {
 	apiIndex := "/api/v1"
 
-	router.GET("/link/:shortcode", controller.LinkRedirect)
+	router.GET("/:shortcode", controller.LinkRedirect)
 	router.GET("/qr/:id", controller.QRRedirect)
 
 	protected := router.Group(apiIndex)

@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -11,12 +12,21 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const error = ref('')
 const longUrl = ref('')
 const shortUrl = ref('')
 const showSuccessDialog = ref(false)
 const validationError = ref('')
+
+const showToast = (severity, summary, detail) => {
+    if (toast && typeof toast.add === 'function') {
+        toast.add({ severity, summary, detail, life: 3000 })
+    } else {
+        console.warn('Toast not available:', { severity, summary, detail })
+    }
+}
 
 // URL validation function
 const isValidUrl = (url) => {
@@ -69,6 +79,13 @@ const handleLinkSubmit = async () => {
         shortUrl.value = data.short_url
         showSuccessDialog.value = true
 
+
+        if (data.message === "Link already exists") {
+            validationError.value = 'You have already shortened this link.'
+        } else {
+            validationError.value = ''
+        }
+
         // Clear the input
         longUrl.value = ''
     } catch (err) {
@@ -86,8 +103,10 @@ const copyToClipboard = async () => {
     try {
         await navigator.clipboard.writeText(shortUrl.value)
         console.log('Copied to clipboard!')
+        showToast('success', 'Copied!', 'Link copied to clipboard')
     } catch (err) {
         console.error('Failed to copy:', err)
+        showToast('error', 'Copy Failed', 'Could not copy Link')
     }
 }
 
@@ -131,12 +150,17 @@ const openLink = (url) => {
         :style="{ width: '90vw', maxWidth: '500px' }">
         <div class="flex flex-col gap-4">
             <p class="text-gray-600">Your shortened link is ready:</p>
+            <p class="text-red-600">
+                {{ validationError || 'Your shortened link is ready:' }}
+            </p>
+
 
             <div class="flex gap-2">
                 <InputText :value="shortUrl" readonly class="flex-1" fluid />
                 <Button icon="pi pi-copy" @click="copyToClipboard" severity="secondary"
                     v-tooltip.top="'Copy to clipboard'" />
             </div>
+
 
             <div class="flex gap-2 justify-end mt-2">
                 <Button label="Close" @click="showSuccessDialog = false" severity="secondary" />

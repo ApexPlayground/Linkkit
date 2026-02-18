@@ -14,7 +14,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const toast = useToast()
 
-// Add this helper function
+
 const showToast = (severity, summary, detail) => {
     if (toast && typeof toast.add === 'function') {
         toast.add({ severity, summary, detail, life: 3000 })
@@ -145,6 +145,10 @@ const copyQRLink = async () => {
         showToast('error', 'Copy Failed', 'Could not copy link')
     }
 }
+
+const openLink = (url) => {
+    window.open(url)
+}
 </script>
 
 <template>
@@ -175,66 +179,43 @@ const copyQRLink = async () => {
         </div>
     </div>
 
-    <Dialog v-model:visible="showSuccessDialog" modal :dismissableMask="true"
-        :style="{ width: '90vw', maxWidth: '550px' }" :pt="{
-            root: { class: 'rounded-xl shadow-2xl' },
-            header: { class: 'border-b border-gray-200 pb-4' },
-            content: { class: 'pt-6' },
-        }">
-        <template #header>
-            <div class="flex items-center gap-3">
-                <div class="bg-green-100 text-green-600 rounded-full p-2">
-                    <i class="pi pi-check text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-800">QR Code Generated!</h3>
-                    <p class="text-sm text-gray-500 mt-1">Your QR code is ready to use</p>
-                </div>
-            </div>
-        </template>
+    <Dialog v-model:visible="showSuccessDialog" modal header="QR Code Generated Successfully!"
+        :style="{ width: '90vw', maxWidth: '500px' }">
+        <div v-if="qrData" class="flex flex-col gap-4">
+            <p class="text-gray-600">Your QR code is ready and saved!</p>
 
-        <div v-if="qrData" class="flex flex-col gap-5">
             <!-- QR Code Display -->
-            <div
-                class="flex justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200 shadow-sm">
-                <img :src="qrCodeDataUrl" alt="Generated QR Code" class="max-w-full h-auto rounded-lg shadow-md" />
+            <div class="flex justify-center bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <img :src="qrCodeDataUrl" alt="Generated QR Code" class="max-w-full h-auto" />
             </div>
 
-            <!-- QR Link Section -->
-            <div
-                class="border border-blue-200 bg-blue-50/50 p-4 rounded-xl space-y-2 hover:shadow-sm transition-shadow">
-                <div class="flex justify-between items-start">
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-link text-blue-600"></i>
-                        <span class="text-sm font-semibold text-gray-700">Scan URL</span>
-                    </div>
-                    <Button icon="pi pi-copy" @click="copyQRLink" size="small" severity="secondary" text rounded
-                        v-tooltip.top="'Copy link'" />
+            <!-- QR Scan URL -->
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-gray-700">Scan URL:</label>
+                <div class="flex gap-2">
+                    <InputText :value="qrData.qr_url" readonly class="flex-1 text-sm" fluid />
+                    <Button icon="pi pi-copy" @click="copyQRLink" severity="secondary" v-tooltip.top="'Copy link'" />
                 </div>
-                <p class="text-xs text-gray-600 break-all font-mono bg-white p-2 rounded border border-blue-100">
-                    {{ qrData.qr_url }}
-                </p>
             </div>
 
-            <!-- Destination Section -->
-            <div class="border border-green-200 bg-green-50/50 p-4 rounded-xl space-y-2">
-                <div class="flex items-center gap-2">
-                    <i class="pi pi-external-link text-green-600"></i>
-                    <span class="text-sm font-semibold text-gray-700">Destination</span>
+            <!-- Destination URL -->
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-gray-700">Destination:</label>
+                <div class="flex gap-2">
+                    <InputText :value="qrData.original_url" readonly class="flex-1 text-sm" fluid />
+                    <Button @click="() => openLink(qrData.original_url)" icon="pi pi-external-link"
+                        severity="secondary" />
+
                 </div>
-                <p class="text-xs text-gray-600 break-all font-mono bg-white p-2 rounded border border-green-100">
-                    {{ qrData.original_url }}
-                </p>
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row gap-2 justify-end pt-2 border-t border-gray-200">
-                <Button label="Close" @click="showSuccessDialog = false" severity="secondary" text
-                    class="order-3 sm:order-1" />
-                <Button label="Copy Image" @click="copyQRToClipboard" icon="pi pi-copy" severity="secondary" outlined
-                    class="order-2" />
-                <Button label="Download" @click="downloadQRCode" icon="pi pi-download" class="order-1 sm:order-3" />
+            <div class="flex gap-2 justify-end mt-2">
+                <Button label="Close" @click="showSuccessDialog = false" severity="secondary" />
+                <Button label="Copy Image" @click="copyQRToClipboard" icon="pi pi-copy" severity="secondary" outlined />
+                <Button label="Download" @click="downloadQRCode" icon="pi pi-download" />
             </div>
         </div>
     </Dialog>
+
 </template>
