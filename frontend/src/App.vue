@@ -5,6 +5,7 @@ import { useThemeStore } from '@/stores/theme'
 import Nav from './components/HeaderNav.vue'
 import FooterView from './views/FooterView.vue'
 import { RouterView } from 'vue-router'
+import Toast from 'primevue/toast'
 
 const route = useRoute()
 const themeStore = useThemeStore()
@@ -24,9 +25,7 @@ const gridStyle = computed(() => ({
 }))
 
 // Check if current route is dashboard
-const isHomeRoute = computed(() => {
-  return route.path.startsWith('/home')
-})
+const isHomeRoute = computed(() => route.path.startsWith('/home'))
 
 onMounted(() => {
   themeStore.initializeTheme()
@@ -46,8 +45,12 @@ onMounted(() => {
 
       <FooterView v-if="!isHomeRoute" />
     </div>
+
+
+    <Toast />
   </div>
 </template>
+
 <style>
 .page-enter-active,
 .page-leave-active {

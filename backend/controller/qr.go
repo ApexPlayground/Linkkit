@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/ApexPlayground/Linkkit/service"
@@ -33,10 +34,15 @@ func CreateQRCode(c *gin.Context) {
 		return
 	}
 
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"id":           qr.ID,
 		"original_url": qr.OriginalURL,
-		"qr_url":       "/qr/" + strconv.FormatUint(uint64(qr.ID), 10),
+		"qr_url":       baseURL + "/qr/" + strconv.FormatUint(uint64(qr.ID), 10),
 		"created_at":   qr.CreatedAt,
 	})
 }

@@ -3,7 +3,7 @@ import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import { createPinia } from 'pinia'
 import 'primeicons/primeicons.css'
-
+import ToastService from 'primevue/toastservice'
 import App from './App.vue'
 import router from './router'
 import AnimateOnScroll from 'primevue/animateonscroll'
@@ -23,6 +23,7 @@ app.use(PrimeVue, {
     },
   },
 })
+app.use(ToastService)
 app.directive('animateonscroll', AnimateOnScroll)
 app.directive('tooltip', Tooltip)
 app.use(createPinia())
